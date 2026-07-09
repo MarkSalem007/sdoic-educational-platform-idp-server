@@ -1,0 +1,171 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum userStatus {
+  ACTIVE
+  PENDING
+  DISABLED
+  SUSPENDED
+  TERMINATED
+}
+
+enum auditAction {
+  REGISTER
+  LOGIN
+  LOGOUT
+  REFRESH_TOKEN
+
+  CREATE_USER
+  UPDATE_USER
+  DELETE_USER
+
+  CHANGE_PASSWORD
+  FORGOT_PASSWORD
+  RESET_PASSWORD
+
+  VERIFY_EMAIL
+}
+
+//IDENTITY
+model User {
+  id                    String                   @id @default(uuid())
+  email                 String                   @unique
+  passwordHash          String
+  passwordVersion       Int                      @default(1)
+  status                userStatus               @default(PENDING)
+  createdAt             DateTime                 @default(now())
+  updatedAt             DateTime                 @updatedAt
+  failedLoginAttempts   Int                      @default(0)
+  lockedUntil           DateTime?
+  lastPasswordChangedAt DateTime?
+  mustChangePassword    Boolean                  @default(true)
+  profile               userProfile?
+  sessions              userSession[]
+  passwordResetTokens   passwordResetToken[]
+  emailTokens           emailVerificationToken[]
+  auditLogs             auditLog[]
+
+  @@index([email])
+}
+
+model userProfile {
+  id            String    @id @default(uuid())
+  userId        String    @unique
+  firstName     String    @db.Text
+  middleName    String?   @db.Text
+  lastName      String    @db.Text
+  suffix        String?   @db.Text
+  mobileNumber  String?   @unique
+  avatar        String?   @db.Text
+  emailVerified DateTime? @default(now())
+  lastLogin     DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model userSession {
+  id              String            @id @default(uuid())
+  userId          String
+  deviceName      String?           @db.Text
+  browser         String?           @db.Text
+  operatingSystem String?           @db.Text
+  userAgent       String?           @db.Text
+  ipAddress       String?           @db.Text
+  isRevoked       Boolean           @default(false)
+  lastActivity    DateTime?
+  expiresAt       DateTime
+  revokedAt       DateTime?
+  jti             String?           @unique
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  refreshToken    userRefreshToken?
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model userRefreshToken {
+  id        String      @id @default(uuid())
+  sessionId String      @unique
+  tokenHash String      @unique
+  expiresAt DateTime
+  isRevoked Boolean     @default(false)
+  revokedAt DateTime?
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  session   userSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
+}
+
+model passwordResetToken {
+  id        String    @id @default(uuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model emailVerificationToken {
+  id         String    @id @default(uuid())
+  userId     String
+  tokenHash  String    @unique
+  expiresAt  DateTime
+  verifiedAt DateTime?
+  createdAt  DateTime  @default(now())
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model idempotencyKey {
+  id             String   @id @default(uuid())
+  key            String   @unique
+  requestHash    String   @db.Text
+  responseStatus Int
+  method         String
+  path           String
+  responseBody   Json?
+  expiresAt      DateTime
+  createdAt      DateTime @default(now())
+
+  @@index([expiresAt])
+}
+
+model auditLog {
+  id          String      @id @default(uuid())
+  userId      String?
+  sessionId   String?
+  requestId   String?
+  action      auditAction
+  ipAddress   String?     @db.Text
+  userAgent   String?     @db.Text
+  description String?     @db.Text
+  createdAt   DateTime    @default(now())
+  user        User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model loginAttempt {
+  id        String   @id @default(uuid())
+  email     String
+  ipAddress String?
+  success   Boolean
+  createdAt DateTime @default(now())
+}
