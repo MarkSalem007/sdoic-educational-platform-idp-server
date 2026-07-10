@@ -1,8 +1,8 @@
-import { AuthorizationError } from '../errors/index.js';
+import { AuthenticationError, AuthorizationError } from '../errors/index.js';
 
 export const requireAuthentication = (req, res, next) => {
     if (!req.authentication) {
-        throw new AuthorizationError('AUTH_FORBIDDEN','Authentication required.');
+        throw new AuthenticationError('AUTH_TOKEN_REQUIRED','Authentication required.');
     }
     next();
 };

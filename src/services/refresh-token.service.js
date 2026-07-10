@@ -13,10 +13,35 @@ export const create = async ({tx, sessionId, refreshToken }) => {
     });
 };
 
-export const find = ({ token }) => {
-    return authenticationRepository.findActiveRefreshToken({tokenHash: hashToken(token)});
+export const find = async ({ tx, refreshToken }) => {
+    return authenticationRepository.findRefreshTokenWithSession({
+        tx,
+        tokenHash: hashToken(refreshToken)
+    });
 };
 
-export const revoke = ({ tx, refreshTokenId }) => {
-    return authenticationRepository.revokeRefreshToken({ tx, refreshTokenId });
+export const rotate = async ({
+    tx,
+    refreshTokenId,
+    refreshToken
+}) => {
+
+    return authenticationRepository.revokeRefreshToken({
+        tx,
+        refreshTokenId,
+        tokenHash: hashToken(refreshToken),
+        expiresAt: durationToDate(
+            env.JWT_REFRESH_EXPIRES_IN
+        )
+    });
+};
+
+export const revokeBySession = ({
+    tx,
+    sessionId
+}) => {
+    return authenticationRepository.revokeRefreshTokenBySessionId({
+        tx,
+        sessionId
+    });
 };

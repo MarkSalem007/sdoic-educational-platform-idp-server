@@ -1,4 +1,4 @@
-import { AuthenticationError, AuthorizationError } from '../errors/index.js';
+import { AuthenticationError, AuthorizationError, ConflictError } from '../errors/index.js';
 import { userStatus } from '@prisma/client';
 
 export const ensureUserExists = (user) => {
@@ -88,5 +88,38 @@ export const ensurePasswordVersionMatches = ({
             'AUTH_TOKEN_INVALID',
             'Token is no longer valid.'
         );
+    }
+};
+
+export const ensureRefreshTokenExists = (refreshToken) => {
+    if (!refreshToken) {
+        throw new AuthenticationError(
+            'AUTH_UNAUTHORIZED',
+            'Invalid refresh token.'
+        );
+    }
+};
+
+export const ensureRefreshTokenIsActive = (refreshToken) => {
+
+    if (refreshToken.isRevoked) {
+        throw new AuthenticationError(
+            'AUTH_REFRESH_TOKEN_REVOKED',
+            'Refresh token has been revoked.'
+        );
+    }
+
+    if (refreshToken.expiresAt <= new Date()) {
+        throw new AuthenticationError(
+            'AUTH_REFRESH_TOKEN_EXPIRED',
+            'Refresh token has expired.'
+        );
+    }
+
+};
+
+export const ensureNewPasswordIsDifferent = ({ currentPasswordMatches }) => {
+    if (currentPasswordMatches) {
+        throw new ConflictError('AUTH_PASSWORD_MISMATCH', 'New password must be different from the current password.');
     }
 };

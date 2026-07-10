@@ -97,15 +97,10 @@ export const revokeRefreshToken = async ({ refreshTokenId, tx = prisma }) => {
     });
 };
 
-export const findActiveRefreshToken = async ({ tokenHash, tx = prisma }) => {
-    return tx.userRefreshToken.findFirst({
-        where: {
-            tokenHash,
-            isRevoked: false
-        },
-        include: {
-            session: true
-        }
+export const revokeRefreshTokenBySessionId = async ({ tx = prisma, sessionId }) => {
+    return tx.userRefreshToken.updateMany({
+        where: { sessionId, isRevoked: false },
+        data: { isRevoked: true, revokedAt: new Date() }
     });
 };
 
@@ -156,9 +151,39 @@ export const findSessionWithUser = async ({
                 }
             }
         }
-
-    });
-
+    })
 };
+
+export const findRefreshTokenWithSession = async ({
+    tokenHash, tx = prisma
+}) => {
+    return tx.userRefreshToken.findUnique({
+        where: {
+            tokenHash
+        },
+        include: {
+            session: {
+                include: {
+                    user: {
+                        include: {
+                            profile: true
+                        }
+                    }
+                }
+            }
+        }
+    });
+};
+
+export const changePassword = async ({ tx = prisma, userId, passwordHash, passwordVersion }) => {
+    return tx.user.update({
+        where: { id: userId },
+        data: { passwordHash, passwordVersion: {
+            increment: 1
+        }, mustChangePassword: false }
+    });
+};
+
+
 
 

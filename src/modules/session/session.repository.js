@@ -16,13 +16,6 @@ export const findByJti = async ({ tx = prisma, jti }) => {
     return tx.userSession.findUnique({ where: { jti } });
 };
 
-export const update = async ({ tx = prisma, sessionId, data }) => {
-    return tx.userSession.update({
-        where: { id: sessionId },
-        data
-    });
-};
-
 export const revoke = async ({ tx = prisma, sessionId }) => {
     return tx.userSession.update({
         where: { id: sessionId },
@@ -68,5 +61,18 @@ export const revokeAllRefreshTokensByUser = async ({ tx = prisma, userId }) => {
             isRevoked: true,
             revokedAt: new Date()
         }
+    });
+};
+
+export const update = async ({
+    tx = prisma,
+    sessionId,
+    data
+}) => {
+    return tx.userSession.update({
+        where: {
+            id: sessionId
+        },
+        data
     });
 };

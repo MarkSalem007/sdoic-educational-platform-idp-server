@@ -14,9 +14,9 @@ export const generateAccessToken = ({sub, sid, pwdv, jti}) => {
     );
 };
 
-export const generateRefreshToken = ({sub, sid, jti}) => {
+export const generateRefreshToken = ({sub, sid, pwdv, jti}) => {
     return jwt.sign(
-        { sub, sid }, jwtConfig.refresh.secret,{ expiresIn: jwtConfig.refresh.expiresIn, jwtid: jti }
+        { sub, sid, pwdv }, jwtConfig.refresh.secret,{ expiresIn: jwtConfig.refresh.expiresIn, jwtid: jti }
     );
 };
 

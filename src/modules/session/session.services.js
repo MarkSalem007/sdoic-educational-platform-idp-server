@@ -77,3 +77,11 @@ export const revokeAllUserAccess = async ({ tx, userId }) => {
 
     console.log('Revoked refresh tokens:', revokedRefreshTokens);
 };
+
+export const update = async ({ tx, sessionId, data }) => {
+    return repository.update({
+        tx,
+        sessionId,
+        data
+    });
+};
