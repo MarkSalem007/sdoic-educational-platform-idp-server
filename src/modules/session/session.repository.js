@@ -76,3 +76,48 @@ export const update = async ({
         data
     });
 };
+
+export const findAllByUser = async ({ tx = prisma, userId }) => {
+    return tx.userSession.findMany({
+        where: {
+            userId,
+            isRevoked: false
+        },
+        orderBy: {
+            lastActivity: 'desc'
+        }
+    });
+};
+
+export const findWithUser = async ({ tx = prisma, sessionId }) => {
+    return tx.userSession.findUnique({
+        where: {
+            id: sessionId
+        },
+
+        include: {
+            user: true
+        }
+    });
+};
+
+export const revokeRefreshTokenBySession = async ({
+    tx = prisma,
+    sessionId
+}) => {
+
+    return tx.userRefreshToken.updateMany({
+
+        where: {
+            sessionId,
+            isRevoked: false
+        },
+
+        data: {
+            isRevoked: true,
+            revokedAt: new Date()
+        }
+
+    });
+
+};

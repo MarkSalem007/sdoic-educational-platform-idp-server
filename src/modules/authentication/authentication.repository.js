@@ -184,6 +184,68 @@ export const changePassword = async ({ tx = prisma, userId, passwordHash, passwo
     });
 };
 
+export const revokePasswordResetTokens = ({ tx = prisma, userId }) => {
+    return tx.passwordResetToken.updateMany({
+        where: { userId, usedAt: null },
+        data: { usedAt: new Date() }
+    });
+};
+
+export const createPasswordResetToken = ({ tx = prisma, data }) => {
+    return tx.passwordResetToken.create({ data });
+};
+
+export const findPasswordResetToken = async ({ tx = prisma, tokenHash }) => {
+    return tx.passwordResetToken.findUnique({
+        where: { tokenHash },
+        include: { user: { include: { profile: true } } }
+    });
+};
+
+export const markPasswordResetTokenUsed = async ({ tx = prisma, tokenId }) => {
+    return tx.passwordResetToken.update({
+        where: {
+            id: tokenId
+        },
+        data: {
+            usedAt: new Date()
+        }
+    });
+};
+
+export const markAllPasswordResetTokensUsed = async ({
+    tx = prisma,
+    userId
+}) => {
+    return tx.passwordResetToken.updateMany({
+        where: {
+            userId,
+            usedAt: null
+        },
+        data: {
+            usedAt: new Date()
+        }
+    });
+};
+
+export const updatePassword = async ({
+    tx = prisma,
+    userId,
+    passwordHash
+}) => {
+    return tx.user.update({
+        where: {
+            id: userId
+        },
+        data: {
+            passwordHash,
+            passwordVersion: {
+                increment: 1
+            },
+            mustChangePassword: false
+        }
+    });
+};
 
 
 

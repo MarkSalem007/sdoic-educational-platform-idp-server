@@ -19,6 +19,7 @@ enum auditAction {
   REGISTER
   LOGIN
   LOGOUT
+  LOGOUTALL
   REFRESH_TOKEN
 
   CREATE_USER
@@ -30,6 +31,8 @@ enum auditAction {
   RESET_PASSWORD
 
   VERIFY_EMAIL
+
+  REVOKE_SESSION
 }
 
 //IDENTITY

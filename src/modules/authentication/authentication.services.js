@@ -4,6 +4,7 @@ import * as passwordService from '../../services/password.service.js';
 import * as auditService from '../../services/audit.service.js';
 import * as sessionService from '../session/session.services.js';
 import * as refreshTokenService from '../../services/refresh-token.service.js';
+import * as passwordResetService from '../../services/password-reset.service.js';
 import { mapLoginResponse } from '../../dto/authentication/login-response.dto.js';
 import { AuthenticationError } from '../../errors/index.js';
 import { mapMeResponse } from '../../dto/authentication/me-response.dto.js';
@@ -17,7 +18,13 @@ import {
     ensureAccountIsActive,
     ensureAccountIsNotLocked,
     ensurePasswordMatches,
-    ensureNewPasswordIsDifferent
+    ensureNewPasswordIsDifferent,
+    ensurePasswordResetTokenExists,
+    ensurePasswordResetTokenIsUnused,
+    ensurePasswordResetTokenIsNotExpired,
+    ensurePasswordIsDifferent,
+    ensureSessionBelongsToUser,
+    ensureSessionIsNotCurrent
 } from '../../validators/index.js';
 import { hashToken, verifyRefreshToken, withTransaction, generateJti, generateAccessToken, generateRefreshToken } from '../../utils/index.js';
 import env from '../../config/env.js';
@@ -325,4 +332,156 @@ export const changePassword = async ({ authentication, data, context }) => {
         });
         return null;
     });
+};
+
+export const forgotPassword = async ({ data, context }) => {
+
+    // Look up user by email
+    const user = await authenticationRepository.findUserByEmail({
+        email: data.email
+    });
+
+    // Prevent email enumeration. Return success even if account doesn't exist.
+    if (!user) return null;
+
+    // Ignore disabled/locked users. Still return success.
+    if (user.status !== 'ACTIVE' ||(user.lockedUntil && user.lockedUntil > new Date())) return null;
+
+    return withTransaction(async (tx) => {
+
+        const resetToken =
+            await passwordResetService.create({
+                tx,
+                userId: user.id
+            });
+
+        await auditService.create({
+            tx,
+            context,
+            userId: user.id,
+            action: auditAction.FORGOT_PASSWORD,
+            description: 'Password reset requested.'
+        });
+
+        // Only expose the token during development
+        if (env.NODE_ENV === 'development') {
+            return { resetToken };
+        }
+
+        return null;
+    });
+};
+
+export const resetPassword = async ({ data, context }) => {
+
+    // Hash incoming token
+    const tokenHash = hashToken(data.token);
+
+    // Find token
+    const passwordResetToken =
+        await authenticationRepository.findPasswordResetToken({
+            tokenHash
+        });
+
+    ensurePasswordResetTokenExists(passwordResetToken);
+    ensurePasswordResetTokenIsUnused(passwordResetToken);
+    ensurePasswordResetTokenIsNotExpired(passwordResetToken);
+
+    const user = passwordResetToken.user;
+
+    ensureUserExists(user);
+    ensureAccountIsActive(user);
+
+    // Prevent using the same password
+    const samePassword =
+        await passwordService.compare(
+            data.password,
+            user.passwordHash
+        );
+
+    ensurePasswordIsDifferent(samePassword);
+
+    return withTransaction(async (tx) => {
+
+        // Hash new password
+        const passwordHash =
+            await passwordService.hash(data.password);
+
+        // Update password
+        await authenticationRepository.updatePassword({
+            tx,
+            userId: user.id,
+            passwordHash
+        });
+
+        // Mark all reset tokens as used
+        await authenticationRepository.markAllPasswordResetTokensUsed({
+            tx,
+            userId: user.id
+        });
+
+        // Revoke all sessions
+        await sessionService.revokeAllUserAccess({
+            tx,
+            userId: user.id
+        });
+
+        // Audit
+        await auditService.create({
+            tx,
+            context,
+            userId: user.id,
+            action: auditAction.RESET_PASSWORD,
+            description: 'Password reset successfully.'
+        });
+
+        return null;
+
+    });
+
+};
+
+export const revokeSession = async ({
+    sessionId,
+    authentication,
+    context
+}) => {
+
+    const session =
+        await sessionService.getSessionWithUser({
+            sessionId
+        });
+
+    ensureSessionExists(session);
+
+    ensureSessionBelongsToUser({
+        session,
+        userId: authentication.user.id
+    });
+
+    ensureSessionIsNotCurrent({
+        sessionId,
+        currentSessionId: authentication.session.id
+    });
+
+    return withTransaction(async (tx) => {
+
+        await sessionService.revokeUserSession({
+            tx,
+            sessionId
+        });
+
+        await auditService.create({
+            tx,
+            context,
+            userId: authentication.user.id,
+            sessionId,
+            action: auditAction.REVOKE_SESSION,
+            description: 'User revoked a session.'
+        });
+
+        return null;
+
+    });
+
 };

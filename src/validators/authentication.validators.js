@@ -1,4 +1,4 @@
-import { AuthenticationError, AuthorizationError, ConflictError } from '../errors/index.js';
+import { AuthenticationError, AuthorizationError, ConflictError, ValidationError } from '../errors/index.js';
 import { userStatus } from '@prisma/client';
 
 export const ensureUserExists = (user) => {
@@ -122,4 +122,72 @@ export const ensureNewPasswordIsDifferent = ({ currentPasswordMatches }) => {
     if (currentPasswordMatches) {
         throw new ConflictError('AUTH_PASSWORD_MISMATCH', 'New password must be different from the current password.');
     }
+};
+
+export const ensurePasswordResetTokenExists = (token) => {
+    if (!token) {
+        throw new AuthenticationError(
+            'AUTH_INVALID_RESET_TOKEN',
+            'Reset token is invalid.'
+        );
+    }
+};
+
+export const ensurePasswordResetTokenIsUnused = (token) => {
+    if (token.usedAt) {
+        throw new AuthenticationError(
+            'AUTH_RESET_TOKEN_USED',
+            'Reset token has already been used.'
+        );
+    }
+};
+
+export const ensurePasswordResetTokenIsNotExpired = (token) => {
+    if (token.expiresAt <= new Date()) {
+        throw new AuthenticationError(
+            'AUTH_RESET_TOKEN_EXPIRED',
+            'Reset token has expired.'
+        );
+    }
+};
+
+export const ensurePasswordIsDifferent = (matches) => {
+    if (matches) {
+        throw new ValidationError(
+            'password',
+            'New password must be different from the current password.'
+        );
+    }
+};
+
+export const ensureSessionBelongsToUser = ({
+    session,
+    userId
+}) => {
+
+    if (session.userId !== userId) {
+
+        throw new AuthorizationError(
+            'AUTH_FORBIDDEN',
+            'You are not allowed to revoke this session.'
+        );
+
+    }
+
+};
+
+export const ensureSessionIsNotCurrent = ({
+    sessionId,
+    currentSessionId
+}) => {
+
+    if (sessionId === currentSessionId) {
+
+        throw new ValidationError(
+            'sessionId',
+            'Use the logout endpoint to sign out of the current session.'
+        );
+
+    }
+
 };

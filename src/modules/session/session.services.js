@@ -2,6 +2,7 @@ import { UAParser } from 'ua-parser-js';
 import env from '../../config/env.js';
 import * as repository from './session.repository.js';
 import { durationToDate } from '../../utils/index.js';
+import { mapSessionsResponse } from '../../dto/authentication/sessions-response.dto.js';
 
 export const createSession = async ({ tx, jti, userId, userAgent, ipAddress }) => {
     const parser = new UAParser(userAgent);
@@ -83,5 +84,43 @@ export const update = async ({ tx, sessionId, data }) => {
         tx,
         sessionId,
         data
+    });
+};
+
+export const getUserSessions = async ({
+    authentication
+}) => {
+
+    const sessions =
+        await repository.findAllByUser({
+            userId: authentication.user.id
+        });
+
+    return mapSessionsResponse({
+        sessions,
+        currentSessionId: authentication.session.id
+    });
+
+};
+
+export const revokeUserSession = async ({
+    tx,
+    sessionId
+}) => {
+
+    return repository.revoke({
+        tx,
+        sessionId
+    });
+
+};
+
+export const getSessionWithUser = async ({
+    tx,
+    sessionId
+}) => {
+    return repository.findWithUser({
+        tx,
+        sessionId
     });
 };
