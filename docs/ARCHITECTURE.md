@@ -2,21 +2,22 @@
 
 ## Overview
 
-The Identity Provider (IDP) is the central authentication and authorization server for the Unified Educational Platform.
+The Identity Provider (IDP) is the central authentication and identity service for the Unified Educational Platform.
 
-Responsibilities include:
+Its responsibilities include:
 
 - Authentication
 - Session Management
 - Identity Management
 - Password Management
+- Refresh Token Rotation
 - Audit Logging
-- Token Issuance
+- JWT Issuance
 - Single Sign-On (SSO)
 - Role-Based Access Control (Future)
-- OAuth2/OpenID Connect (Future)
+- OAuth2 / OpenID Connect (Future)
 
-The IDP follows a layered architecture inspired by Clean Architecture and Domain-Driven Design principles.
+The IDP follows a layered architecture inspired by Clean Architecture and Domain-Driven Design (DDD).
 
 ---
 
@@ -38,21 +39,21 @@ src/
 
 # Layer Responsibilities
 
-## 1. Config
+## Config
 
-Purpose:
+Purpose
 
 Centralized application configuration.
 
-Contains:
+Contains
 
-- Prisma Client
 - Environment Variables
+- Prisma Client
 - JWT Configuration
 - Logger
 - Application Configuration
 
-Rules:
+Rules
 
 - Reads environment variables only.
 - No business logic.
@@ -61,57 +62,62 @@ Rules:
 
 ---
 
-## 2. DTO
+## DTO
 
-Purpose:
+Purpose
 
 Validate incoming request payloads.
 
-Rules:
+Uses
 
-- Uses Zod.
-- No Prisma.
-- No business logic.
-- No HTTP responses.
+- Zod
 
-Each DTO exports:
+Rules
+
+- No Prisma
+- No business logic
+- No HTTP responses
+
+Each DTO exports
 
 - Schema
 - Validation Function
 
-Example:
+Example
 
 create-user.dto.js
 
----
+login.dto.js
 
-## 3. Validators
-
-Purpose:
-
-Reusable validation components.
-
-Examples:
-
-- Email
-- UUID
-- Mobile Number
-- Password Complexity
-- Common Text Validators
-
-DTOs compose validators.
-
-Validators never know about Express.
+change-password.dto.js
 
 ---
 
-## 4. Middleware
+## Validators
 
-Purpose:
+Purpose
+
+Reusable validation utilities shared across the application.
+
+Examples
+
+- UUID validation
+- Password validation
+- Email validation
+- Refresh Token validation
+- Session validation
+
+Validators never access Express or Prisma.
+
+---
+
+## Middleware
+
+Purpose
 
 Cross-cutting concerns.
 
-Examples:
+Examples
 
 - Authentication
 - Authorization
@@ -120,126 +126,107 @@ Examples:
 - Error Handling
 - Rate Limiting
 
-Rules:
+Rules
 
-Middleware never performs business logic.
-
-Middleware never directly accesses Prisma.
+- No business logic
+- No database queries
+- No response formatting
 
 ---
 
-## 5. Controller
+## Controller
 
-Purpose:
+Purpose
 
 Translate HTTP requests into business operations.
 
-Responsibilities:
+Responsibilities
 
 - Read Request
 - Validate DTO
 - Call Service
-- Return HTTP Response
+- Return Response
 
-Controllers never:
+Controllers never
 
 - Query Prisma
-- Generate Tokens
 - Hash Passwords
+- Generate JWTs
 
 Controllers should remain thin.
 
 ---
 
-## 6. Service
+## Service
 
-Purpose:
+Purpose
 
 Contains business logic.
 
-Responsibilities:
+Responsibilities
 
 - Business Rules
 - Transactions
-- Duplicate Checking
-- Orchestration
-- Calling Shared Services
+- Session orchestration
+- Refresh token rotation
+- Password workflows
+- Calling shared services
 
-Services never:
+Services never
 
-- Access Express Request directly
-- Generate HTTP Responses
-
-Services communicate with:
-
-- Repository
-- Shared Services
+- Read Express Request directly
+- Generate HTTP responses
 
 ---
 
-## 7. Repository
+## Repository
 
-Purpose:
+Purpose
 
 Database abstraction layer.
 
-Repositories translate business objects into Prisma operations.
+Repositories only perform Prisma operations.
 
-Repositories may:
+Repositories never
 
-- Create
-- Update
-- Delete
-- Query
+- Validate input
+- Throw business exceptions
+- Generate JWTs
+- Hash passwords
 
-Repositories never:
-
-- Validate
-- Generate Tokens
-- Hash Passwords
-- Throw Business Exceptions
-
-Repositories remain intentionally "dumb".
+Repositories remain intentionally dumb.
 
 ---
 
-## 8. Shared Services
+## Shared Services
 
-Purpose:
+Reusable business capabilities.
 
-Reusable business capabilities shared by multiple modules.
+Examples
 
-Examples:
+- password.service.js
+- audit.service.js
+- refresh-token.service.js
+- session.service.js
 
-password.service.js
-
-audit.service.js
-
-token.service.js
-
-session.service.js
-
-email.service.js
-
-Shared Services never expose HTTP endpoints.
+Shared services never expose HTTP endpoints.
 
 ---
 
-## 9. Utils
+## Utils
 
-Purpose:
+Purpose
 
-Pure helper functions.
+Stateless helper functions.
 
-Examples:
+Examples
 
-- JWT Helpers
-- Crypto Helpers
-- Date Helpers
-- Response Helpers
-- Validation Helpers
+- JWT helpers
+- Crypto helpers
+- Date helpers
+- Response helpers
 
-Utils are stateless.
+Utils contain no business logic.
 
 ---
 
@@ -269,21 +256,19 @@ Controller → Prisma
 
 Controller → Repository
 
-Middleware → Repository
-
 Repository → Service
 
 Repository → HTTP
+
+Middleware → Repository
 
 ---
 
 # Transactions
 
-Business transactions belong inside Services.
+Business transactions belong only inside Services.
 
-Never inside Repositories.
-
-Example:
+Example
 
 Service
 
@@ -301,17 +286,13 @@ Repository
 
 Services throw custom errors.
 
-Example:
+Examples
 
-ValidationError
-
-ConflictError
-
-UnauthorizedError
-
-ForbiddenError
-
-NotFoundError
+- ValidationError
+- AuthenticationError
+- AuthorizationError
+- ConflictError
+- NotFoundError
 
 The Error Middleware converts exceptions into HTTP responses.
 
@@ -319,19 +300,17 @@ The Error Middleware converts exceptions into HTTP responses.
 
 # Request Context
 
-Every request receives:
+Every request receives
 
-requestId
+- requestId
+- ipAddress
+- userAgent
 
-ipAddress
-
-userAgent
-
-Stored in:
+Stored inside
 
 req.context
 
-Example:
+Example
 
 req.context.requestId
 
@@ -339,9 +318,7 @@ req.context.requestId
 
 # Audit Logging
 
-Business actions create audit logs.
-
-Audit logging is performed through:
+Business actions create audit logs through
 
 audit.service.js
 
@@ -351,59 +328,111 @@ Never write directly into the AuditLog table.
 
 # Password Policy
 
-Passwords are managed exclusively through:
+Passwords are managed exclusively through
 
 password.service.js
 
-Responsibilities:
+Responsibilities
 
-Generate Password
+- Hash Password
+- Compare Password
+- Generate Password
 
-Hash Password
+Future
 
-Verify Password
-
-Future:
-
-Password Strength
-
-Password Expiration
-
-Password History
+- Password History
+- Password Expiration
+- Password Strength
 
 ---
 
 # Token Policy
 
-JWT generation occurs only inside:
+JWTs are generated only through
 
-token.service.js
+utils/jwt.js
 
-Never generate JWTs inside Controllers.
+Responsibilities
+
+- Access Token
+- Refresh Token
+- Verification
+- JTI Generation
+
+Controllers never generate JWTs.
 
 ---
 
-# Session Policy
+# Refresh Token Rotation
 
-Sessions are managed only through:
+The IDP implements Refresh Token Rotation.
+
+Flow
+
+Login
+
+↓
+
+Issue Access Token
+
+↓
+
+Issue Refresh Token
+
+↓
+
+Store Hashed Refresh Token
+
+↓
+
+Refresh Request
+
+↓
+
+Verify Refresh Token
+
+↓
+
+Revoke Previous Refresh Token
+
+↓
+
+Issue New Access Token
+
+↓
+
+Issue New Refresh Token
+
+↓
+
+Update Stored Refresh Token
+
+Old refresh tokens become unusable immediately.
+
+---
+
+# Session Management
+
+Sessions are managed exclusively through
 
 session.service.js
 
-Responsibilities:
+Responsibilities
 
-Create Session
+- Create Session
+- Update Activity
+- List Sessions
+- Revoke Session
+- Logout Current Session
+- Logout All Sessions
 
-Revoke Session
-
-Update Activity
-
-Refresh Session
+Every login creates a new session.
 
 ---
 
 # Repository Convention
 
-Repositories receive object parameters.
+Repositories always receive object parameters.
 
 Good
 
@@ -421,7 +450,7 @@ findByEmail(email)
 
 # Service Convention
 
-Services receive object parameters.
+Services always receive object parameters.
 
 Good
 
@@ -439,17 +468,25 @@ createUser(data)
 
 ---
 
+# Controller Convention
+
+Controllers
+
+- Validate DTO
+- Call Service
+- Return successResponse()
+
+Nothing more.
+
+---
+
 # Response Convention
 
-Controllers always return:
+Successful responses always use
 
 successResponse()
 
-or
-
-Error Middleware
-
-Controllers never manually construct response objects.
+Errors are handled only by Error Middleware.
 
 ---
 
@@ -457,13 +494,13 @@ Controllers never manually construct response objects.
 
 Modules
 
-users.service.js
+authentication.service.js
 
-users.repository.js
+authentication.repository.js
 
-users.controller.js
+authentication.controller.js
 
-users.endpoints.js
+authentication.endpoints.js
 
 Shared Services
 
@@ -471,17 +508,19 @@ audit.service.js
 
 password.service.js
 
+refresh-token.service.js
+
 session.service.js
 
-token.service.js
-
 DTO
-
-create-user.dto.js
 
 login.dto.js
 
 change-password.dto.js
+
+forgot-password.dto.js
+
+reset-password.dto.js
 
 ---
 
@@ -489,15 +528,35 @@ change-password.dto.js
 
 Single Responsibility Principle
 
-Repositories perform database operations.
+Repositories
 
-Services perform business logic.
+↓
 
-Controllers perform HTTP translation.
+Database Operations
 
-Middleware performs cross-cutting concerns.
+Services
 
-Shared Services provide reusable capabilities.
+↓
+
+Business Logic
+
+Controllers
+
+↓
+
+HTTP Translation
+
+Middleware
+
+↓
+
+Cross-Cutting Concerns
+
+Shared Services
+
+↓
+
+Reusable Business Features
 
 ---
 
@@ -525,27 +584,21 @@ OpenID Connect
 
 Single Sign-On
 
-Device Management
-
 API Keys
 
-Organization Management
+Organizations
 
 ---
 
 # Development Guidelines
 
-Always create:
+Every feature should contain
 
-DTO
-
-Repository
-
-Service
-
-Controller
-
-Endpoints
+- DTO
+- Repository
+- Service
+- Controller
+- Endpoints
 
 Never skip layers.
 

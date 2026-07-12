@@ -1,4 +1,9 @@
 export default Object.freeze({
+
+    IP: process.env.IP,
+
+    ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS,
+
     NODE_ENV: process.env.NODE_ENV,
     PORT: Number(process.env.PORT),
     DATABASE_URL: process.env.DATABASE_URL,
