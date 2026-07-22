@@ -1,3 +1,5 @@
+import env from '../../config/env.js';
+
 export const mapMeResponse = ({ session, user }) => ({
     sessionId: session.id,
     user: {
@@ -7,6 +9,8 @@ export const mapMeResponse = ({ session, user }) => ({
         mustChangePassword: user.mustChangePassword,
         firstName: user.profile.firstName,
         middleName: user.profile.middleName,
-        lastName: user.profile.lastName
+        lastName: user.profile.lastName,
+        avatar: user.profile.avatar ? `${env.APP_URL}/uploads/profile/${user.profile.avatar}` : null,
+        twoFactorEnabled: user.userTwoFactor?.twoFactorEnabled ?? false
     }
 });

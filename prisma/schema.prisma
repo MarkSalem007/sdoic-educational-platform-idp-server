@@ -21,56 +21,139 @@ enum auditAction {
   LOGOUT
   LOGOUTALL
   REFRESH_TOKEN
-
   CREATE_USER
   UPDATE_USER
   DELETE_USER
-
   CHANGE_PASSWORD
   FORGOT_PASSWORD
   RESET_PASSWORD
-
   VERIFY_EMAIL
-
   REVOKE_SESSION
+  DISABLE_TWO_FACTOR
+  CREATE_APPLICATION
+  UPDATE_APPLICATION
+  DELETE_APPLICATION
+}
+
+enum officeTypes {
+  SCHOOLS_IMUS_CITY
+  SCHOOLS_DIVISION_OF_IMUS_CITY
+}
+
+enum plantillaStatus {
+  PERMANENT
+  CONTRACTUAL
+  COS
+  JO
+  SUBSTITUTE
+  PROVISIONAL
+  NATIONAL
+  CASUAL
+}
+
+enum securityEventType {
+  LOGIN_SUCCESS
+  LOGIN_FAILED
+
+  LOGOUT
+  LOGOUT_ALL
+
+  NEW_DEVICE
+  NEW_IP_ADDRESS
+  NEW_COUNTRY
+
+  MFA_ENABLED
+  MFA_DISABLED
+  MFA_VERIFIED
+  MFA_FAILED
+
+  PASSWORD_CHANGED
+  PASSWORD_RESET
+
+  SESSION_CREATED
+  SESSION_REVOKED
+  SESSION_REVOKED_ALL
+
+  REFRESH_TOKEN_ROTATED
+  REFRESH_TOKEN_REUSED
+
+  ACCOUNT_LOCKED
+  ACCOUNT_UNLOCKED
+
+  DEVICE_TRUSTED
+  DEVICE_REMOVED
+  DEVICE_UNTRUSTED
+
+  SUSPICIOUS_LOGIN
+  IMPOSSIBLE_TRAVEL
+}
+
+enum securitySeverity {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum applicationStatus {
+  ACTIVE
+  INACTIVE
+  MAINTENANCE
+}
+
+enum applicationType {
+  INTERNAL
+  EXTERNAL
 }
 
 //IDENTITY
 model User {
-  id                    String                   @id @default(uuid())
-  email                 String                   @unique
-  passwordHash          String
-  passwordVersion       Int                      @default(1)
-  status                userStatus               @default(PENDING)
-  createdAt             DateTime                 @default(now())
-  updatedAt             DateTime                 @updatedAt
-  failedLoginAttempts   Int                      @default(0)
-  lockedUntil           DateTime?
-  lastPasswordChangedAt DateTime?
-  mustChangePassword    Boolean                  @default(true)
-  profile               userProfile?
-  sessions              userSession[]
-  passwordResetTokens   passwordResetToken[]
-  emailTokens           emailVerificationToken[]
-  auditLogs             auditLog[]
+  id                      String                   @id @default(uuid())
+  email                   String                   @unique
+  passwordHash            String
+  passwordVersion         Int                      @default(1)
+  status                  userStatus               @default(PENDING)
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+  failedLoginAttempts     Int                      @default(0)
+  lockedUntil             DateTime?
+  lastPasswordChangedAt   DateTime?
+  mustChangePassword      Boolean                  @default(true)
+  profile                 userProfile?
+  sessions                userSession[]
+  passwordResetTokens     passwordResetToken[]
+  emailTokens             emailVerificationToken[]
+  auditLogs               auditLog[]
+  userTwoFactor           userTwoFactor?
+  userTwoFactorChallenges userTwoFactorChallenge[]
+  userDevices             userDevice[]
+  securityEvents          securityEvent[]
+  userIpHistories         userIpHistory[]
+  roleAssignments         roleAssignment[]
+  userPermissions         userPermission[]
 
   @@index([email])
 }
 
 model userProfile {
-  id            String    @id @default(uuid())
-  userId        String    @unique
-  firstName     String    @db.Text
-  middleName    String?   @db.Text
-  lastName      String    @db.Text
-  suffix        String?   @db.Text
-  mobileNumber  String?   @unique
-  avatar        String?   @db.Text
-  emailVerified DateTime? @default(now())
-  lastLogin     DateTime?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id              String           @id @default(uuid())
+  userId          String           @unique
+  firstName       String           @db.Text
+  middleName      String?          @db.Text
+  lastName        String           @db.Text
+  suffix          String?          @db.Text
+  mobileNumber    String?          @unique
+  avatar          String?          @db.Text
+  emailVerified   DateTime?        @default(now())
+  lastLogin       DateTime?
+  plantilla       String?          @db.Text
+  plantillaStatus plantillaStatus? @default(CONTRACTUAL)
+  employeeId      String?          @db.Text
+  office          office?          @relation(fields: [officeId], references: [id], onDelete: SetNull)
+  officeId        String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model userSession {
@@ -90,6 +173,7 @@ model userSession {
   updatedAt       DateTime          @updatedAt
   user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   refreshToken    userRefreshToken?
+  securityEvents  securityEvent[]
 
   @@index([userId])
   @@index([expiresAt])
@@ -120,6 +204,68 @@ model passwordResetToken {
 
   @@index([userId])
   @@index([expiresAt])
+}
+
+model userDevice {
+  id              String          @id @default(uuid())
+  userId          String
+  fingerprint     String
+  browser         String
+  operatingSystem String
+  deviceName      String?
+  lastIpAddress   String?
+  trusted         Boolean         @default(false)
+  firstSeen       DateTime        @default(now())
+  lastSeen        DateTime        @updatedAt
+  user            User            @relation(fields: [userId], references: [id])
+  securityEvents  securityEvent[]
+
+  @@unique([userId, fingerprint])
+  @@index([userId])
+}
+
+model userIpHistory {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  ipAddress String
+  country   String?
+  city      String?
+  firstSeen DateTime @default(now())
+  lastSeen  DateTime @updatedAt
+
+  @@index([userId])
+  @@index([ipAddress])
+}
+
+model securityEvent {
+  id            String            @id @default(uuid())
+  userId        String?
+  sessionId     String?
+  applicationId String?
+  deviceId      String?
+  requestId     String?
+  metadata      Json?
+  resolvedAt    DateTime?
+  resolvedBy    String?
+  riskScore     Int?
+  device        userDevice?       @relation(fields: [deviceId], references: [id])
+  eventType     securityEventType
+  severity      securitySeverity
+  ipAddress     String?
+  userAgent     String?
+  description   String?
+  createdAt     DateTime          @default(now())
+  user          User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
+  session       userSession?      @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  application   application?      @relation(fields: [applicationId], references: [id])
+
+  @@index([applicationId])
+  @@index([userId])
+  @@index([deviceId])
+  @@index([eventType])
+  @@index([severity])
+  @@index([createdAt])
 }
 
 model emailVerificationToken {
@@ -171,4 +317,192 @@ model loginAttempt {
   ipAddress String?
   success   Boolean
   createdAt DateTime @default(now())
+}
+
+model office {
+  id            String        @id @unique @default(uuid())
+  officeName    String        @db.Text
+  officeType    officeTypes   @default(SCHOOLS_IMUS_CITY)
+  officeHead    String?       @db.Text
+  officeCode    String?       @unique
+  officeAddress String?       @db.Text
+  officeEmail   String?       @unique
+  officeContact String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  userProfiles  userProfile[]
+}
+
+enum twoFactorMethod {
+  TOTP
+  EMAIL
+  SMS
+  PASSKEY
+}
+
+model userTwoFactor {
+  id                       String                    @id @default(uuid())
+  user                     User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId                   String                    @unique
+  twoFactorSetupStartedAt  DateTime?
+  twoFactorSecretEncrypted String
+  secretRotatedAt          DateTime?
+  twoFactorEnabled         Boolean                   @default(false)
+  preferredMethod          twoFactorMethod           @default(TOTP)
+  failedAttempts           Int                       @default(0)
+  lockedUntil              DateTime?
+  lastTotpCounter          Int?
+  verifiedAt               DateTime?
+  createdAt                DateTime                  @default(now())
+  updatedAt                DateTime                  @updatedAt
+  backupCodes              userTwoFactorBackupCode[]
+}
+
+model userTwoFactorBackupCode {
+  id          String        @id @default(uuid())
+  twoFactorId String
+  twoFactor   userTwoFactor @relation(fields: [twoFactorId], references: [id], onDelete: Cascade)
+  codeHash    String
+  usedAt      DateTime?
+  createdAt   DateTime      @default(now())
+
+  @@index([twoFactorId])
+}
+
+model userTwoFactorChallenge {
+  id          String    @id @default(uuid())
+  userId      String
+  challenge   String    @unique
+  expiresAt   DateTime
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model application {
+  id                 String              @id @default(uuid())
+  name               String
+  code               String              @unique
+  description        String?             @db.Text
+  logo               String?
+  baseUrl            String
+  loginUrl           String?
+  callbackUrl        String?
+  displayOrder       Int                 @default(0)
+  status             applicationStatus   @default(ACTIVE)
+  type               applicationType     @default(INTERNAL)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  securityEvents     securityEvent[]
+  applicationModules applicationModule[]
+  policies           policy[]
+}
+
+//RBAC and PBAC
+
+model role {
+  id          String  @id @default(uuid())
+  name        String
+  code        String  @unique
+  description String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  permissions       rolePermission[]
+  assignments       roleAssignment[]
+  policyAssignments policyAssignment[]
+}
+
+model applicationModule {
+  id            String       @id @default(uuid())
+  applicationId String
+  application   application  @relation(fields: [applicationId], references: [id])
+  name          String
+  code          String
+  description   String?
+  displayOrder  Int          @default(0)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  permissions   permission[]
+
+  @@unique([applicationId, code])
+}
+
+model permission {
+  id              String            @id @default(uuid())
+  moduleId        String
+  module          applicationModule @relation(fields: [moduleId], references: [id])
+  name            String
+  code            String            @unique
+  description     String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  roles           rolePermission[]
+  userPermissions userPermission[]
+}
+
+model rolePermission {
+  roleId       String
+  permissionId String
+  role         role       @relation(fields: [roleId], references: [id])
+  permission   permission @relation(fields: [permissionId], references: [id])
+
+  @@id([roleId, permissionId])
+}
+
+model roleAssignment {
+  userId     String
+  roleId     String
+  assignedBy String?
+  assignedAt DateTime  @default(now())
+  expiresAt  DateTime?
+  user       User      @relation(fields: [userId], references: [id])
+  role       role      @relation(fields: [roleId], references: [id])
+
+  @@id([userId, roleId])
+}
+
+//User Overrides
+
+enum permissionEffect {
+  GRANT
+  DENY
+}
+
+model userPermission {
+  userId       String
+  permissionId String
+  effect       permissionEffect
+  assignedBy   String?
+  assignedAt   DateTime         @default(now())
+  expiresAt    DateTime?
+  user         User             @relation(fields: [userId], references: [id])
+  permission   permission       @relation(fields: [permissionId], references: [id])
+
+  @@id([userId, permissionId])
+}
+
+model policy {
+  id            String             @id @default(uuid())
+  name          String
+  code          String             @unique
+  description   String?
+  applicationId String
+  application   application        @relation(fields: [applicationId], references: [id])
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  assignments   policyAssignment[]
+}
+
+model policyAssignment {
+  roleId   String
+  policyId String
+  role     role   @relation(fields: [roleId], references: [id])
+  policy   policy @relation(fields: [policyId], references: [id])
+
+  @@id([roleId, policyId])
 }

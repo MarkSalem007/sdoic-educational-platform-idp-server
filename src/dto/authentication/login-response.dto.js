@@ -1,3 +1,5 @@
+import env from '../../config/env.js';
+
 export const mapLoginResponse = ({ accessToken = null, refreshToken = null, expiresIn = null, session, user }) => ({    
     accessToken,
     refreshToken,
@@ -10,6 +12,8 @@ export const mapLoginResponse = ({ accessToken = null, refreshToken = null, expi
         mustChangePassword: user.mustChangePassword,
         firstName: user.profile.firstName,
         middleName: user.profile.middleName,
-        lastName: user.profile.lastName
+        lastName: user.profile.lastName,
+        avatar: user.profile.avatar ? `${env.APP_URL}/uploads/profile/${user.profile.avatar}` : null,
+        twoFactorEnabled: user.userTwoFactor?.twoFactorEnabled ?? false
     }
 });

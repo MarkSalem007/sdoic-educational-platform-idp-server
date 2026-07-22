@@ -2,6 +2,7 @@ import logger from '../config/logger.js';
 import env from '../config/env.js';
 import { errorResponse, toISOString } from '../utils/index.js';
 import { AppError } from '../errors/index.js';
+import { ZodError } from 'zod';
 
 
 export default (err, req, res, next) => {
@@ -17,6 +18,21 @@ export default (err, req, res, next) => {
             stack: err.stack
         }
     });
+
+    if (err instanceof ZodError){
+        return res.status(400).json(
+            errorResponse({
+                code: 'VALIDATION_ERROR',
+                message: 'Validation Failed',
+                errors: err.issues.map(issue => ({
+                    field: issue.path.join('.'),
+                    message: issue.message
+                })),
+                requestId: req.requestId,
+                timestamp: toISOString()
+            })
+        );
+    }
 
     if (err instanceof AppError) {
         return res.status(err.statusCode).json(

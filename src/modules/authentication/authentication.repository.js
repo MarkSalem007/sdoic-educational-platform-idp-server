@@ -147,7 +147,8 @@ export const findSessionWithUser = async ({
         include: {
             user: {
                 include: {
-                    profile: true
+                    profile: true,
+                    userTwoFactor: true
                 }
             }
         }
@@ -247,5 +248,49 @@ export const updatePassword = async ({
     });
 };
 
+
+export const rotateRefreshToken = async ({tx = prisma, refreshTokenId, tokenHash, expiresAt}) => {
+    return tx.userRefreshToken.update({
+        where: {
+            id: refreshTokenId
+        },
+        data: {
+            tokenHash,
+            expiresAt,
+            isRevoked: false,
+            revokedAt: null
+        }
+    });
+}
+
+export const findChallenge = ({ challenge }) => {
+    return prisma.userTwoFactorChallenge.findUnique({
+        where: {
+            challenge
+        },
+        include: {
+            user: {
+                include: {
+                    profile: true,
+                    userTwoFactor: true
+                }
+            }
+        }
+    });
+};
+
+export const deleteChallenge = ({ tx = prisma, challenge }) => {
+    return tx.userTwoFactorChallenge.delete({
+        where: {
+            challenge
+        }
+    });
+};
+
+export const createChallenge = ({ tx = prisma, data }) => {
+    return tx.userTwoFactorChallenge.create({
+        data
+    });
+};
 
 

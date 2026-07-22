@@ -26,7 +26,7 @@ export const rotate = async ({
     refreshToken
 }) => {
 
-    return authenticationRepository.revokeRefreshToken({
+    return authenticationRepository.rotateRefreshToken({
         tx,
         refreshTokenId,
         tokenHash: hashToken(refreshToken),

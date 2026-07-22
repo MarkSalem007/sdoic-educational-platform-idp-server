@@ -1,45 +1,41 @@
 import cors from 'cors';
-import env from './env.js';
 
-const allowedOrigins = env.ALLOWED_ORIGINS
-    .split(',')
-    .map(origin => origin.trim());
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+  .split(',')
+  .map(origin => origin.trim());
 
-export default cors({
+const corsOptions = {
 
-    origin(origin, callback) {
+  origin(origin, callback) {
 
-        // Allow Postman/mobile apps (no Origin header)
-        if (!origin) {
-            return callback(null, true);
-        }
+    // Allow Postman, curl, server-to-server requests
+    if (!origin) {
+      return callback(null, true);
+    }
 
-        if (allowedOrigins.includes(origin)) {
-            return callback(null, true);
-        }
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
 
-        return callback(
-            new Error(`Origin ${origin} is not allowed by CORS.`)
-        );
+    callback(new Error('Not allowed by CORS'));
+  },
 
-    },
+  credentials: true,
 
-    credentials: true,
+  methods: [
+    'GET',
+    'POST',
+    'PUT',
+    'PATCH',
+    'DELETE',
+    'OPTIONS'
+  ],
 
-    methods: [
-        'GET',
-        'POST',
-        'PUT',
-        'PATCH',
-        'DELETE',
-        'OPTIONS'
-    ],
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization'
+  ],
 
-    allowedHeaders: [
-        'Authorization',
-        'Content-Type',
-        'X-Request-ID',
-        'Idempotency-Key'
-    ]
+};
 
-});
+export default cors(corsOptions);

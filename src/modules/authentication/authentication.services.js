@@ -1,5 +1,6 @@
 import { auditAction } from '@prisma/client';
 import * as authenticationRepository from './authentication.repository.js';
+import * as twoFactorRepository from '../two-factor/two-factor.repository.js';
 import * as passwordService from '../../services/password.service.js';
 import * as auditService from '../../services/audit.service.js';
 import * as sessionService from '../session/session.services.js';
@@ -29,6 +30,38 @@ import {
 import { hashToken, verifyRefreshToken, withTransaction, generateJti, generateAccessToken, generateRefreshToken } from '../../utils/index.js';
 import env from '../../config/env.js';
 import { handleLoginFailure, handleLoginSuccess } from './authentication-login.helpers.js';
+import { generateChallenge } from '../../utils/two-factor-challenge.js';
+import { decryptSecret, verifyCode } from '../../utils/two-factor.js';
+
+const calculateLifetime = (payload) => {
+    return payload.exp - payload.iat;
+};
+
+const calculateRemaining = (exp) => {
+    return Math.max(
+        0,
+        exp - Math.floor(Date.now() / 1000)
+    );
+};
+
+const getSessionStatus = (lastActivity) => {
+    const idleSeconds = Math.floor(
+        (Date.now() - lastActivity.getTime()) / 1000
+    );
+
+    let status = 'ACTIVE';
+
+    if (idleSeconds > 1800) {
+        status = 'OFFLINE';
+    } else if (idleSeconds > 300) {
+        status = 'IDLE';
+    }
+
+    return {
+        idleSeconds,
+        status
+    };
+};
 
 export const login = async ({ data, context }) => {
     const user =
@@ -55,6 +88,33 @@ export const login = async ({ data, context }) => {
             });
         });
         ensurePasswordMatches(false);
+    }
+
+    const twoFactor = await twoFactorRepository.findByUserId({ userId: user.id });
+
+    if (twoFactor?.twoFactorEnabled) {
+        const challenge = generateChallenge();
+
+        try {
+            const created = await authenticationRepository.createChallenge({
+                    data: {
+                        userId: user.id,
+                        challenge,
+                        expiresAt: new Date(Date.now() + 5 * 60 * 1000)
+                    }
+        });
+
+            console.log(created);
+
+        } catch (err) {
+            console.error(err);
+            throw err;
+        }
+
+        return {
+            requiresTwoFactor: true,
+            challenge
+        };
     }
 
     return withTransaction(async (tx) => {
@@ -212,25 +272,6 @@ export const refresh = async ({ refreshToken }) => {
 
     });
 
-};
-
-export const rotateRefreshToken = async ({
-    tx = prisma,
-    refreshTokenId,
-    tokenHash,
-    expiresAt
-}) => {
-    return tx.userRefreshToken.update({
-        where: {
-            id: refreshTokenId
-        },
-        data: {
-            tokenHash,
-            expiresAt,
-            isRevoked: false,
-            revokedAt: null
-        }
-    });
 };
 
 export const logout = async ({ authentication, context }) => {
@@ -481,6 +522,213 @@ export const revokeSession = async ({
         });
 
         return null;
+
+    });
+
+};
+
+export const getTokenStatus = async ({ authentication, refreshToken }) => {
+
+    const accessPayload = authentication.token;
+    const refreshPayload = verifyRefreshToken(refreshToken);
+    const session = authentication.session;
+    const sessionLifetime = Math.floor((session.expiresAt.getTime() - session.createdAt.getTime()) / 1000);
+    const sessionRemaining = Math.max(0, Math.floor((session.expiresAt.getTime() - Date.now()) / 1000));
+    const sessionHealth = getSessionStatus(session.lastActivity);
+
+    return {
+        serverTime:
+            new Date(),
+        accessToken: {
+            issuedAt: new Date(accessPayload.iat * 1000),
+            expiresAt: new Date(accessPayload.exp * 1000),
+            expiresIn: calculateRemaining(accessPayload.exp),
+            lifetime: calculateLifetime(accessPayload),
+            autoRefresh: true
+        },
+
+        refreshToken: {
+            issuedAt: new Date(refreshPayload.iat * 1000),
+            expiresAt: new Date(refreshPayload.exp * 1000),
+            expiresIn: calculateRemaining(refreshPayload.exp),
+            lifetime: calculateLifetime(refreshPayload)
+        },
+
+        session: {
+            id: session.id,
+            deviceName: session.deviceName,
+            browserName: session.browser,
+            operatingSystemName: session.operatingSystem,
+            ipAddress: session.ipAddress,
+            userAgent: session.userAgent,
+            startedAt: session.createdAt,
+            expiresAt: session.expiresAt,
+            expiresIn: sessionRemaining,
+            lifetime: sessionLifetime,
+            lastActivity: session.lastActivity,
+            idleSeconds: sessionHealth.idleSeconds,
+            status: sessionHealth.status
+        }
+    };
+};
+
+export const verifyTwoFactor = async ({ data, context }) => {
+
+    const loginChallenge =
+        await authenticationRepository.findChallenge({
+            challenge: data.challenge
+        });
+
+    if (!loginChallenge) {
+        throw new AuthenticationError(
+            'INVALID_CHALLENGE',
+            'Login challenge is invalid.'
+        );
+    }
+
+    if (loginChallenge.completedAt) {
+        throw new AuthenticationError(
+            'CHALLENGE_ALREADY_USED',
+            'Login challenge has already been used.'
+        );
+    }
+
+    if (loginChallenge.expiresAt < new Date()) {
+        throw new AuthenticationError(
+            'CHALLENGE_EXPIRED',
+            'Login challenge has expired.'
+        );
+    }
+
+    const user = loginChallenge.user;
+
+    const twoFactor =
+        await twoFactorRepository.findByUserId({
+            userId: user.id
+        });
+
+    if (!twoFactor || !twoFactor.twoFactorEnabled) {
+        throw new AuthenticationError(
+            'TWO_FACTOR_DISABLED',
+            'Two-factor authentication is not enabled.'
+        );
+    }
+
+    if (
+        twoFactor.lockedUntil &&
+        twoFactor.lockedUntil > new Date()
+    ) {
+        throw new AuthenticationError(
+            'TWO_FACTOR_LOCKED',
+            'Two-factor authentication is temporarily locked.'
+        );
+    }
+
+    const secret =
+        decryptSecret(twoFactor.twoFactorSecretEncrypted);
+
+    const result =
+        verifyCode({
+            secret,
+            token: data.code
+        });
+
+    if (!result.valid) {
+
+        const attempts = twoFactor.failedAttempts + 1;
+
+        await twoFactorRepository.incrementFailedAttempts({
+            userId: user.id,
+            failedAttempts: attempts,
+            lockedUntil:
+                attempts >= 5
+                    ? new Date(Date.now() + 5 * 60 * 1000)
+                    : null
+        });
+
+        throw new AuthenticationError(
+            'INVALID_TWO_FACTOR_CODE',
+            'Invalid authentication code.'
+        );
+    }
+
+    if (
+        twoFactor.lastTotpCounter !== null &&
+        result.counter <= twoFactor.lastTotpCounter
+    ) {
+        throw new AuthenticationError(
+            'TWO_FACTOR_CODE_ALREADY_USED',
+            'This authentication code has already been used.'
+        );
+    }
+
+    return withTransaction(async (tx) => {
+
+        await twoFactorRepository.resetFailedAttempts({
+            tx,
+            userId: user.id
+        });
+
+        await twoFactorRepository.updateLastTotpCounter({
+            tx,
+            userId: user.id,
+            counter: result.counter
+        });
+
+        await authenticationRepository.deleteChallenge({
+            tx,
+            challenge: loginChallenge.challenge
+        });
+
+        const jti = generateJti();
+
+        const session =
+            await sessionService.createSession({
+                tx,
+                jti,
+                userId: user.id,
+                userAgent: context.userAgent,
+                ipAddress: context.ipAddress
+            });
+
+        const accessToken =
+            generateAccessToken({
+                sub: user.id,
+                sid: session.id,
+                pwdv: user.passwordVersion,
+                jti
+            });
+
+        const refreshToken =
+            generateRefreshToken({
+                sub: user.id,
+                sid: session.id,
+                pwdv: user.passwordVersion,
+                jti
+            });
+
+        await refreshTokenService.create({
+            tx,
+            sessionId: session.id,
+            refreshToken
+        });
+
+        await auditService.create({
+            tx,
+            context,
+            userId: user.id,
+            sessionId: session.id,
+            action: auditAction.LOGIN,
+            description: 'User completed two-factor authentication.'
+        });
+
+        return mapLoginResponse({
+            accessToken,
+            refreshToken,
+            expiresIn: env.JWT_ACCESS_EXPIRES_IN,
+            session,
+            user
+        });
 
     });
 

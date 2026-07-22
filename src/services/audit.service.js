@@ -1,5 +1,4 @@
-import * as auditRepository
-    from '../modules/audit/audit.repository.js';
+import * as auditRepository from '../modules/audit/audit.repository.js';
 
 export const create = async ({
 

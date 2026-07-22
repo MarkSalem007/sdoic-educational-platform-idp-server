@@ -4,28 +4,12 @@ import asyncHandler from '../utils/async-handler.js';
 
 export default asyncHandler(async (req, res, next) => {
 
-    const authorization = req.get('Authorization');
-
-    if (!authorization) {
-        throw new AuthenticationError(
-            'AUTH_TOKEN_REQUIRED',
-            'Authorization header is required.'
-        );
-    }
-
-    if (!authorization.startsWith('Bearer ')) {
-        throw new AuthenticationError(
-            'AUTH_TOKEN_INVALID',
-            'Invalid authorization header.'
-        );
-    }
-
-    const accessToken = authorization.substring(7).trim();
+    const accessToken = req.cookies.accessToken;
 
     if (!accessToken) {
         throw new AuthenticationError(
             'AUTH_TOKEN_REQUIRED',
-            'Access token is required.'
+            'Access token cookie is required.'
         );
     }
 

@@ -1,6 +1,7 @@
 export default Object.freeze({
 
     IP: process.env.IP,
+    APP_URL: process.env.APP_URL,
 
     ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS,
 
@@ -13,6 +14,7 @@ export default Object.freeze({
 
     JWT_ACCESS_EXPIRES_IN: process.env.JWT_ACCESS_EXPIRES_IN,
     JWT_REFRESH_EXPIRES_IN: process.env.JWT_REFRESH_EXPIRES_IN,
+    TWO_FACTOR_SECRET_KEY: process.env.TWO_FACTOR_SECRET_KEY,
 
     ACCESS_TOKEN_ISSUER: process.env.ACCESS_TOKEN_ISSUER,
     ACCESS_TOKEN_AUDIENCE: process.env.ACCESS_TOKEN_AUDIENCE,
@@ -35,5 +37,10 @@ export default Object.freeze({
     REMEMBER_ME_EXPIRES_IN: process.env.REMEMBER_ME_EXPIRES_IN,
     OTP_EXPIRES_IN: process.env.OTP_EXPIRES_IN,
     APP_NAME: process.env.APP_NAME,
-    APP_VERSION: process.env.APP_VERSION
+    APP_VERSION: process.env.APP_VERSION,
+
+    STORAGE_LOCATION: process.env.STORAGE_LOCATION,
+    APPLICATION_LOGO_STORAGE: process.env.APPLICATION_LOGO_STORAGE,
+    
+    ALLOWED_CALLBACK_DOMAINS: process.env.ALLOWED_CALLBACK_DOMAINS?.split(',').map(domain => domain.trim()) || [],
 });
