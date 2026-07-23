@@ -12,12 +12,11 @@ import errorMiddleware from './src/middlewares/error.middleware.js';
 const app = express();
 
 import env from './src/config/env.js';
+app.use(corsMiddleware);
 app.use('/uploads/profile', express.static(env.STORAGE_LOCATION));
 app.use('/uploads/applications', express.static(env.APPLICATION_LOGO_STORAGE));
 
 app.use(express.json());
-
-app.use(corsMiddleware);
 
 app.use(cookieParser());
 
