@@ -41,6 +41,7 @@ export default Object.freeze({
 
     STORAGE_LOCATION: process.env.STORAGE_LOCATION,
     APPLICATION_LOGO_STORAGE: process.env.APPLICATION_LOGO_STORAGE,
+    INSTITUTION_LOGO_STORAGE: process.env.INSTITUTION_LOGO_STORAGE,
     
     ALLOWED_CALLBACK_DOMAINS: process.env.ALLOWED_CALLBACK_DOMAINS?.split(',').map(domain => domain.trim()) || [],
 });

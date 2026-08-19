@@ -5,7 +5,23 @@ import { addMinutes } from '../../utils/index.js';
 export const findUserByEmail = async ({ email, tx = prisma }) => {
     return tx.user.findUnique({
         where: { email },
-        include: { profile: true }
+        include: { 
+            profile: true,
+            roleAssignments: {
+                include: {
+                    role: {
+                        include: {
+                            permissions: {
+                                include: { permission: true }
+                            }
+                        }
+                    }
+                }
+            },
+            userPermissions: {
+                include: { permission: true }
+            }
+        }
     });
 };
 
@@ -148,7 +164,21 @@ export const findSessionWithUser = async ({
             user: {
                 include: {
                     profile: true,
-                    userTwoFactor: true
+                    userTwoFactor: true,
+                    roleAssignments: {
+                        include: {
+                            role: {
+                                include: {
+                                    permissions: {
+                                        include: { permission: true }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    userPermissions: {
+                        include: { permission: true }
+                    }
                 }
             }
         }
@@ -167,7 +197,21 @@ export const findRefreshTokenWithSession = async ({
                 include: {
                     user: {
                         include: {
-                            profile: true
+                            profile: true,
+                            roleAssignments: {
+                                include: {
+                                    role: {
+                                        include: {
+                                            permissions: {
+                                                include: { permission: true }
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            userPermissions: {
+                                include: { permission: true }
+                            }
                         }
                     }
                 }
@@ -274,7 +318,8 @@ export const findChallenge = ({ challenge }) => {
                     profile: true,
                     userTwoFactor: true
                 }
-            }
+            },
+            application: true
         }
     });
 };
@@ -293,4 +338,24 @@ export const createChallenge = ({ tx = prisma, data }) => {
     });
 };
 
+
+export const findApplicationByCode = async ({
+    code,
+    tx = prisma
+}) => {
+
+    return tx.application.findUnique({
+        where: {
+            code
+        }
+    });
+
+};
+
+export const findAllApplicationCodes = async ({ tx = prisma } = {}) => {
+    const apps = await tx.application.findMany({
+        select: { code: true }
+    });
+    return apps.map(app => app.code);
+};
 

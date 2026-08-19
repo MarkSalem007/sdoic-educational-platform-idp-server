@@ -3,20 +3,22 @@ import crypto from 'crypto';
 import jwtConfig from '../config/jwt.js';
 import { AuthenticationError } from '../errors/index.js';
 
-export const generateAccessToken = ({sub, sid, pwdv, jti}) => {
+export const generateAccessToken = ({sub, sid, pwdv, jti, email, audience, firstName, lastName, displayName, avatar, permissions}) => {
     return jwt.sign(
-        { sub, sid, pwdv },
+        { sub, sid, pwdv, email, firstName, lastName, displayName, avatar, permissions },
         jwtConfig.access.secret,
         {
             expiresIn: jwtConfig.access.expiresIn,
-            jwtid: jti
+            jwtid: jti,
+            issuer: jwtConfig.access.issuer,
+            audience,
         }
     );
 };
 
-export const generateRefreshToken = ({sub, sid, pwdv, jti}) => {
+export const generateRefreshToken = ({sub, sid, pwdv, jti, audience}) => {
     return jwt.sign(
-        { sub, sid, pwdv }, jwtConfig.refresh.secret,{ expiresIn: jwtConfig.refresh.expiresIn, jwtid: jti }
+        { sub, sid, pwdv }, jwtConfig.refresh.secret,{ expiresIn: jwtConfig.refresh.expiresIn, jwtid: jti, audience }
     );
 };
 

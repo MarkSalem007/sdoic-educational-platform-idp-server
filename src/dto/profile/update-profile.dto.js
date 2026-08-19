@@ -36,6 +36,9 @@ const schema = z.object({
         ]).optional(),
 
     officeId:
+        z.string().uuid().nullable().optional(),
+
+    institutionId:
         z.string().uuid().nullable().optional()
 
 }).strict();

@@ -36,8 +36,8 @@ enum auditAction {
 }
 
 enum officeTypes {
-  SCHOOLS_IMUS_CITY
-  SCHOOLS_DIVISION_OF_IMUS_CITY
+  SCHOOL
+  DIVISION_OFFICE
 }
 
 enum plantillaStatus {
@@ -107,6 +107,38 @@ enum applicationType {
 }
 
 //IDENTITY
+
+model institution {
+  id        String  @id @default(uuid())
+  code      String  @unique
+  name      String
+  shortName String?
+
+  logoUrl String?
+
+  addressLine1 String?
+  addressLine2 String?
+  city         String?
+  province     String?
+  region       String?
+
+  contactNumber String?
+  email         String?
+
+  headerLine1 String?
+  headerLine2 String?
+  headerLine3 String?
+
+  footerLine1 String?
+  footerLine2 String?
+
+  isActive Boolean @default(true)
+
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  userProfiles userProfile[]
+}
+
 model User {
   id                      String                   @id @default(uuid())
   email                   String                   @unique
@@ -151,6 +183,8 @@ model userProfile {
   employeeId      String?          @db.Text
   office          office?          @relation(fields: [officeId], references: [id], onDelete: SetNull)
   officeId        String?
+  institution     institution?     @relation(fields: [institutionId], references: [id], onDelete: SetNull)
+  institutionId   String?
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
   user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -322,7 +356,7 @@ model loginAttempt {
 model office {
   id            String        @id @unique @default(uuid())
   officeName    String        @db.Text
-  officeType    officeTypes   @default(SCHOOLS_IMUS_CITY)
+  officeType    officeTypes   @default(SCHOOL)
   officeHead    String?       @db.Text
   officeCode    String?       @unique
   officeAddress String?       @db.Text
@@ -370,35 +404,38 @@ model userTwoFactorBackupCode {
 }
 
 model userTwoFactorChallenge {
-  id          String    @id @default(uuid())
-  userId      String
-  challenge   String    @unique
-  expiresAt   DateTime
-  completedAt DateTime?
-  createdAt   DateTime  @default(now())
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id            String       @id @default(uuid())
+  userId        String
+  challenge     String       @unique
+  applicationId String?
+  expiresAt     DateTime
+  completedAt   DateTime?
+  createdAt     DateTime     @default(now())
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  application   application? @relation(fields: [applicationId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([expiresAt])
 }
 
 model application {
-  id                 String              @id @default(uuid())
-  name               String
-  code               String              @unique
-  description        String?             @db.Text
-  logo               String?
-  baseUrl            String
-  loginUrl           String?
-  callbackUrl        String?
-  displayOrder       Int                 @default(0)
-  status             applicationStatus   @default(ACTIVE)
-  type               applicationType     @default(INTERNAL)
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
-  securityEvents     securityEvent[]
-  applicationModules applicationModule[]
-  policies           policy[]
+  id                      String                   @id @default(uuid())
+  name                    String
+  code                    String                   @unique
+  description             String?                  @db.Text
+  logo                    String?
+  baseUrl                 String
+  loginUrl                String?
+  callbackUrl             String?
+  displayOrder            Int                      @default(0)
+  status                  applicationStatus        @default(ACTIVE)
+  type                    applicationType          @default(INTERNAL)
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+  securityEvents          securityEvent[]
+  applicationModules      applicationModule[]
+  policies                policy[]
+  userTwoFactorChallenges userTwoFactorChallenge[]
 }
 
 //RBAC and PBAC

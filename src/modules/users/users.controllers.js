@@ -63,3 +63,42 @@ export const getAll = asyncHandler(async (req, res) => {
     );
 });
 
+export const bulkImport = asyncHandler(async (req, res) => {
+    const { users } = req.body;
+    if (!users || !Array.isArray(users)) {
+        return res.status(400).json({ success: false, message: 'Invalid payload: users array is required.' });
+    }
+
+    const result = await usersService.bulkImport({
+        users,
+        context: req.context
+    });
+
+    return res.status(200).json(
+        successResponse({
+            message: 'Bulk import processed.',
+            data: result,
+            requestId: req.requestId,
+            timestamp: toISOString()
+        })
+    );
+});
+
+export const exportCredentials = asyncHandler(async (req, res) => {
+    const { roleId } = req.body;
+    
+    const data = await usersService.exportCredentials({
+        roleId,
+        context: req.context
+    });
+
+    return res.status(200).json(
+        successResponse({
+            message: 'Credentials exported successfully.',
+            data,
+            requestId: req.requestId,
+            timestamp: toISOString()
+        })
+    );
+});
+

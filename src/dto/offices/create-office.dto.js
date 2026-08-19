@@ -9,8 +9,8 @@ const createOfficeSchema = z.object({
         .max(255),
 
     officeType: z.enum([
-        'SCHOOLS_DIVISION_OF_IMUS_CITY',
-        'SCHOOLS_IMUS_CITY'
+        'SCHOOL',
+        'DIVISION_OFFICE'
     ]),
 
     officeCode: z

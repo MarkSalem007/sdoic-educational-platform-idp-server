@@ -5,7 +5,8 @@ import { ValidationError } from '../../errors/index.js';
 
 export const loginSchema = z.object({
     email,
-    password: requiredText('Password', 128)
+    password: requiredText('Password', 128),
+    clientId: requiredText('Client ID', 100)
 }).strict();
 
 export const validateLogin = (payload) => {

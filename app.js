@@ -15,6 +15,7 @@ import env from './src/config/env.js';
 app.use(corsMiddleware);
 app.use('/uploads/profile', express.static(env.STORAGE_LOCATION));
 app.use('/uploads/applications', express.static(env.APPLICATION_LOGO_STORAGE));
+app.use('/uploads/institution-logos', express.static(env.INSTITUTION_LOGO_STORAGE));
 
 app.use(express.json());
 

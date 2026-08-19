@@ -8,3 +8,4 @@ export { default as asyncHandler } from './async-handler.js';
 export * from './date.js';
 export * from './duration.js';
 export * from './jwt.js';
+export * from './permissions.js';

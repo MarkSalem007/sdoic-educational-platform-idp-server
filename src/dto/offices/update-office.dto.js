@@ -10,8 +10,8 @@ const updateOfficeSchema = z.object({
         .optional(),
 
     officeType: z.enum([
-        'SCHOOLS_DIVISION_OF_IMUS_CITY',
-        'SCHOOLS_IMUS_CITY'
+        'SCHOOL',
+        'DIVISION_OFFICE'
     ]).optional(),
 
     officeCode: z

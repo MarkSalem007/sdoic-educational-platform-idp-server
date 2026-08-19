@@ -23,6 +23,17 @@ export const mapProfile = (profile) => ({
             officeType: profile.office.officeType
         }
         : null,
+    institution: profile.institution
+        ? {
+            id: profile.institution.id,
+            code: profile.institution.code,
+            name: profile.institution.name,
+            shortName: profile.institution.shortName,
+            logoUrl: profile.institution.logoUrl
+                ? `${env.APP_URL}/uploads/institution-logos/${profile.institution.logoUrl}`
+                : null
+        }
+        : null,
     createdAt: profile.createdAt,
     updatedAt: profile.updatedAt
 });

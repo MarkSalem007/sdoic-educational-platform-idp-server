@@ -1,3 +1,4 @@
+import prisma from '../../config/prisma.js';
 import { userStatus, auditAction } from '@prisma/client';
 import * as usersRepository from './users.repository.js';
 import * as passwordService from '../../services/password.service.js';
@@ -174,4 +175,125 @@ export const getAll = async ({ query }) => {
         users: mapUsersListResponse({ users }),
         meta: buildPaginationMeta({ page, pageSize, totalRecords})
     };
+};
+
+export const bulkImport = async ({ users, context }) => {
+    // 1. Get Teacher Role (assuming code 'TEACHER' or name 'Teacher')
+    // We'll search by name 'Teacher' if code doesn't exist.
+    const allRoles = await prisma.role.findMany();
+    const teacherRole = allRoles.find(r => r.code === 'TEACHER' || r.name.toLowerCase() === 'teacher');
+    const teacherRoleId = teacherRole ? teacherRole.id : null;
+
+    const importedUsers = [];
+    const errors = [];
+
+    for (const userData of users) {
+        try {
+            // Check if email already exists
+            const existingEmail = await usersRepository.findByEmail({ email: userData.email });
+            if (existingEmail) {
+                errors.push({ email: userData.email, error: 'Email already exists.' });
+                continue;
+            }
+
+            const temporaryPassword = passwordService.generateTemporaryPassword();
+            const passwordHash = await passwordService.hash(temporaryPassword);
+
+            const user = await withTransaction(async (tx) => {
+                const createdUser = await usersRepository.createUser({
+                    tx,
+                    data: {
+                        email: userData.email,
+                        passwordHash,
+                        passwordVersion: 1,
+                        status: userStatus.ACTIVE,
+                        mustChangePassword: true
+                    }
+                });
+
+                await usersRepository.createProfile({
+                    tx,
+                    data: {
+                        userId: createdUser.id,
+                        firstName: userData.firstName,
+                        lastName: userData.lastName,
+                    }
+                });
+
+                if (teacherRoleId) {
+                    await tx.roleAssignment.create({
+                        data: {
+                            userId: createdUser.id,
+                            roleId: teacherRoleId,
+                            assignedBy: context?.userId
+                        }
+                    });
+                }
+
+                await auditService.create({
+                    tx,
+                    context,
+                    userId: createdUser.id,
+                    action: auditAction.CREATE_USER,
+                    description: 'Administrator bulk imported user account.'
+                });
+                return createdUser;
+            });
+            importedUsers.push(user);
+        } catch (error) {
+            errors.push({ email: userData.email, error: error.message });
+        }
+    }
+
+    return { importedCount: importedUsers.length, errors };
+};
+
+export const exportCredentials = async ({ roleId, context }) => {
+    // 1. Fetch users. If roleId is provided, filter by role.
+    const where = {};
+    if (roleId && roleId !== 'all') {
+        where.roleAssignments = {
+            some: { roleId }
+        };
+    }
+    
+    const users = await prisma.user.findMany({
+        where,
+        include: { profile: true }
+    });
+
+    const exportedData = [];
+
+    for (const user of users) {
+        let temporaryPassword = '';
+        
+        // Only generate new password if they haven't changed their default one yet
+        if (user.mustChangePassword) {
+            temporaryPassword = passwordService.generateTemporaryPassword();
+            const passwordHash = await passwordService.hash(temporaryPassword);
+            
+            await prisma.user.update({
+                where: { id: user.id },
+                data: { passwordHash }
+            });
+            
+            // Audit log the password regeneration
+            await auditService.create({
+                context,
+                userId: user.id,
+                action: auditAction.UPDATE_USER,
+                description: 'System generated new temporary password for export.'
+            });
+        }
+
+        exportedData.push({
+            email: user.email,
+            firstName: user.profile?.firstName || '',
+            lastName: user.profile?.lastName || '',
+            status: user.status,
+            temporaryPassword
+        });
+    }
+
+    return exportedData;
 };

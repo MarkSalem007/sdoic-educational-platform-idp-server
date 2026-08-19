@@ -10,6 +10,7 @@ export const findByUserId = async ({ tx = prisma, userId }) => {
 
         include: {
             office: true,
+            institution: true,
             user: true
         }
     });
@@ -22,6 +23,7 @@ export const update = async ({ tx = prisma, userId, data }) => {
         data,
         include: {
             office: true,
+            institution: true,
             user: true
         }
     });
@@ -33,6 +35,7 @@ export const create = async ({ tx = prisma, data }) => {
         data,
         include: {
             office: true,
+            institution: true,
             user: true
         }
     });
@@ -49,6 +52,7 @@ export const updateAvatar = async ({
         data: { avatar },
         include: {
             office: true,
+            institution: true,
             user: true
         }
     });

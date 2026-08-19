@@ -1,4 +1,5 @@
 import { auditAction } from '@prisma/client';
+import { ValidationError } from '../../errors/index.js';
 import * as authenticationRepository from './authentication.repository.js';
 import * as twoFactorRepository from '../two-factor/two-factor.repository.js';
 import * as passwordService from '../../services/password.service.js';
@@ -27,7 +28,7 @@ import {
     ensureSessionBelongsToUser,
     ensureSessionIsNotCurrent
 } from '../../validators/index.js';
-import { hashToken, verifyRefreshToken, withTransaction, generateJti, generateAccessToken, generateRefreshToken } from '../../utils/index.js';
+import { hashToken, verifyRefreshToken, withTransaction, generateJti, generateAccessToken, generateRefreshToken, extractPermissions } from '../../utils/index.js';
 import env from '../../config/env.js';
 import { handleLoginFailure, handleLoginSuccess } from './authentication-login.helpers.js';
 import { generateChallenge } from '../../utils/two-factor-challenge.js';
@@ -64,10 +65,24 @@ const getSessionStatus = (lastActivity) => {
 };
 
 export const login = async ({ data, context }) => {
-    const user =
-        await authenticationRepository.findUserByEmail({
-            email: data.email
-        });
+    const user = await authenticationRepository.findUserByEmail({ email: data.email });
+    const application = await authenticationRepository.findApplicationByCode({ code: data.clientId });
+
+    if (!application) {
+        throw new ValidationError(
+            'APPLICATION_NOT_FOUND',
+            'Unknown application.'
+        );
+    }
+
+if (application.status !== 'ACTIVE') {
+
+    throw new ValidationError(
+        'APPLICATION_DISABLED',
+        'Application is disabled.'
+    );
+
+}
 
     ensureUserExists(user);
     ensureAccountIsActive(user);
@@ -99,12 +114,11 @@ export const login = async ({ data, context }) => {
             const created = await authenticationRepository.createChallenge({
                     data: {
                         userId: user.id,
+                        applicationId: application.id,
                         challenge,
                         expiresAt: new Date(Date.now() + 5 * 60 * 1000)
                     }
         });
-
-            console.log(created);
 
         } catch (err) {
             console.error(err);
@@ -118,6 +132,8 @@ export const login = async ({ data, context }) => {
     }
 
     return withTransaction(async (tx) => {
+
+        const allApplicationCodes = await authenticationRepository.findAllApplicationCodes({ tx });
 
         await handleLoginSuccess({
             tx,
@@ -140,7 +156,14 @@ export const login = async ({ data, context }) => {
                 sub: user.id,
                 sid: session.id,
                 pwdv: user.passwordVersion,
-                jti
+                jti,
+                email: user.email,
+                audience: allApplicationCodes,
+                firstName: user.profile.firstName,
+                lastName: user.profile.lastName,
+                displayName: user.profile.displayName,
+                avatar: user.profile.avatar,
+                permissions: extractPermissions(user)
             });
 
         const refreshToken =
@@ -148,7 +171,9 @@ export const login = async ({ data, context }) => {
                 sub: user.id,
                 sid: session.id,
                 pwdv: user.passwordVersion,
-                jti
+                jti,
+                email: user.email,
+                audience: allApplicationCodes
             });
 
         await refreshTokenService.create({
@@ -223,6 +248,8 @@ export const refresh = async ({ refreshToken }) => {
 
     return withTransaction(async (tx) => {
 
+        const allApplicationCodes = await authenticationRepository.findAllApplicationCodes({ tx });
+
         // Generate fresh JTI
         const newJti = generateJti();
 
@@ -232,7 +259,14 @@ export const refresh = async ({ refreshToken }) => {
                 sub: user.id,
                 sid: session.id,
                 pwdv: user.passwordVersion,
-                jti: newJti
+                jti: newJti,
+                email: user.email,
+                audience: allApplicationCodes,
+                firstName: user.profile.firstName,
+                lastName: user.profile.lastName,
+                displayName: user.profile.displayName,
+                avatar: user.profile.avatar,
+                permissions: extractPermissions(user)
             });
 
         // Generate new refresh token
@@ -241,7 +275,8 @@ export const refresh = async ({ refreshToken }) => {
                 sub: user.id,
                 sid: session.id,
                 pwdv: user.passwordVersion,
-                jti: newJti
+                jti: newJti,
+                audience: allApplicationCodes
             });
 
         // Persist refresh token
@@ -579,6 +614,15 @@ export const verifyTwoFactor = async ({ data, context }) => {
             challenge: data.challenge
         });
 
+    const application = loginChallenge.application;
+
+    if (!application) {
+        throw new AuthenticationError(
+            'APPLICATION_NOT_FOUND',
+            'Application not found.'
+        );
+    }
+
     if (!loginChallenge) {
         throw new AuthenticationError(
             'INVALID_CHALLENGE',
@@ -602,10 +646,7 @@ export const verifyTwoFactor = async ({ data, context }) => {
 
     const user = loginChallenge.user;
 
-    const twoFactor =
-        await twoFactorRepository.findByUserId({
-            userId: user.id
-        });
+    const twoFactor = await twoFactorRepository.findByUserId({userId: user.id});
 
     if (!twoFactor || !twoFactor.twoFactorEnabled) {
         throw new AuthenticationError(
@@ -624,14 +665,9 @@ export const verifyTwoFactor = async ({ data, context }) => {
         );
     }
 
-    const secret =
-        decryptSecret(twoFactor.twoFactorSecretEncrypted);
+    const secret = decryptSecret(twoFactor.twoFactorSecretEncrypted);
 
-    const result =
-        verifyCode({
-            secret,
-            token: data.code
-        });
+    const result = verifyCode({secret, token: data.code});
 
     if (!result.valid) {
 
@@ -663,6 +699,8 @@ export const verifyTwoFactor = async ({ data, context }) => {
     }
 
     return withTransaction(async (tx) => {
+
+        const allApplicationCodes = await authenticationRepository.findAllApplicationCodes({ tx });
 
         await twoFactorRepository.resetFailedAttempts({
             tx,
@@ -696,7 +734,14 @@ export const verifyTwoFactor = async ({ data, context }) => {
                 sub: user.id,
                 sid: session.id,
                 pwdv: user.passwordVersion,
-                jti
+                jti,
+                email: user.email,
+                audience: allApplicationCodes,
+                firstName: user.profile.firstName,
+                lastName: user.profile.lastName,
+                displayName: user.profile.displayName,
+                avatar: user.profile.avatar,
+                permissions: extractPermissions(user)
             });
 
         const refreshToken =
@@ -704,7 +749,9 @@ export const verifyTwoFactor = async ({ data, context }) => {
                 sub: user.id,
                 sid: session.id,
                 pwdv: user.passwordVersion,
-                jti
+                jti,
+                email: user.email,
+                audience: allApplicationCodes
             });
 
         await refreshTokenService.create({
