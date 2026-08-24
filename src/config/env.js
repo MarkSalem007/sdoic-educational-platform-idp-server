@@ -44,4 +44,5 @@ export default Object.freeze({
     INSTITUTION_LOGO_STORAGE: process.env.INSTITUTION_LOGO_STORAGE,
     
     ALLOWED_CALLBACK_DOMAINS: process.env.ALLOWED_CALLBACK_DOMAINS?.split(',').map(domain => domain.trim()) || [],
+    COOKIE_DOMAIN: process.env.COOKIE_DOMAIN,
 });
