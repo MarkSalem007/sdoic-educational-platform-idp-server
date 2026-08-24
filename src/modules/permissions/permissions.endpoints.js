@@ -13,6 +13,11 @@ router.get('/role/:roleId', requireAnyPermission([PERMISSIONS.VIEW_ONLY_PERMISSI
 router.post('/role/:roleId', requirePermission(PERMISSIONS.UPDATE_ROLE), permissionsController.assignPermissionToRole);
 router.delete('/role/:roleId/:permissionId', requirePermission(PERMISSIONS.UPDATE_ROLE), permissionsController.removePermissionFromRole);
 
+// User Permission Overrides
+router.get('/user/:userId', requireAnyPermission([PERMISSIONS.VIEW_ONLY_PERMISSIONS, PERMISSIONS.VIEW_ONLY_USERS, PERMISSIONS.UPDATE_USER]), permissionsController.getUserPermissions);
+router.post('/user/:userId/override', requirePermission(PERMISSIONS.UPDATE_USER), permissionsController.setUserPermissionOverride);
+router.delete('/user/:userId/override/:permissionId', requirePermission(PERMISSIONS.UPDATE_USER), permissionsController.removeUserPermissionOverride);
+
 router.get('/:id', requireAnyPermission([PERMISSIONS.VIEW_ONLY_PERMISSIONS, PERMISSIONS.CREATE_PERMISSION, PERMISSIONS.UPDATE_PERMISSION, PERMISSIONS.DELETE_PERMISSION]), permissionsController.getById);
 router.post('/', requirePermission(PERMISSIONS.CREATE_PERMISSION), permissionsController.create);
 router.put('/:id', requirePermission(PERMISSIONS.UPDATE_PERMISSION), permissionsController.update);

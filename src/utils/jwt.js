@@ -3,9 +3,9 @@ import crypto from 'crypto';
 import jwtConfig from '../config/jwt.js';
 import { AuthenticationError } from '../errors/index.js';
 
-export const generateAccessToken = ({sub, sid, pwdv, jti, email, audience, firstName, lastName, displayName, avatar, permissions}) => {
+export const generateAccessToken = ({sub, sid, pwdv, jti, email, audience, firstName, lastName, displayName, avatar, permissions, roles, officeId, officeName}) => {
     return jwt.sign(
-        { sub, sid, pwdv, email, firstName, lastName, displayName, avatar, permissions },
+        { sub, sid, pwdv, email, firstName, lastName, displayName, avatar, permissions, roles, officeId, officeName },
         jwtConfig.access.secret,
         {
             expiresIn: jwtConfig.access.expiresIn,

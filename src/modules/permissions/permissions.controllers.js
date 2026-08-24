@@ -74,3 +74,38 @@ export const remove = asyncHandler(async (req, res) => {
         res.status(400).json({ message: error.message, success: false });
     }
 });
+
+export const getUserPermissions = asyncHandler(async (req, res) => {
+    const { userId } = req.params;
+    const data = await permissionsService.getUserPermissions(userId);
+    res.json({ data });
+});
+
+export const setUserPermissionOverride = asyncHandler(async (req, res) => {
+    const { userId } = req.params;
+    const { permissionId, effect } = req.body;
+
+    if (!permissionId || !effect) {
+        return res.status(400).json({ message: 'permissionId and effect (GRANT/DENY) are required', success: false });
+    }
+
+    const assignedBy = req.user?.id || req.authentication?.user?.id || null;
+    const result = await permissionsService.setUserPermissionOverride({
+        userId,
+        permissionId,
+        effect,
+        assignedBy
+    });
+
+    res.status(201).json({ message: 'User permission override updated successfully', data: result.data });
+});
+
+export const removeUserPermissionOverride = asyncHandler(async (req, res) => {
+    const { userId, permissionId } = req.params;
+    const result = await permissionsService.removeUserPermissionOverride({ userId, permissionId });
+    if (!result.success) {
+        return res.status(404).json({ message: result.message, success: false });
+    }
+    res.json({ message: 'User permission override removed successfully' });
+});
+

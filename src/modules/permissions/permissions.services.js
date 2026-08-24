@@ -73,3 +73,50 @@ export const remove = async (id) => {
         throw error;
     }
 };
+
+export const getUserPermissions = async (userId) => {
+    const [overrides, roleAssignments] = await Promise.all([
+        permissionsRepository.findUserPermissionOverrides({ userId }),
+        permissionsRepository.findUserRolePermissions({ userId })
+    ]);
+
+    const rolePermissions = roleAssignments.flatMap(ra =>
+        ra.role?.permissions?.map(rp => ({
+            permissionId: rp.permissionId,
+            roleId: ra.role.id,
+            roleName: ra.role.name,
+            permission: rp.permission
+        })) || []
+    );
+
+    return {
+        overrides,
+        rolePermissions
+    };
+};
+
+export const setUserPermissionOverride = async ({ userId, permissionId, effect, assignedBy }) => {
+    if (!['GRANT', 'DENY'].includes(effect)) {
+        throw new Error('Invalid effect. Must be GRANT or DENY.');
+    }
+    const override = await permissionsRepository.setUserPermissionOverride({
+        userId,
+        permissionId,
+        effect,
+        assignedBy
+    });
+    return { success: true, data: override };
+};
+
+export const removeUserPermissionOverride = async ({ userId, permissionId }) => {
+    try {
+        const removed = await permissionsRepository.removeUserPermissionOverride({ userId, permissionId });
+        return { success: true, data: removed };
+    } catch (error) {
+        if (error.code === 'P2025') {
+            return { success: false, message: 'No override found for this permission' };
+        }
+        throw error;
+    }
+};
+

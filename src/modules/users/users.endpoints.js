@@ -10,7 +10,7 @@ router.post('/', authenticationMiddleware, requireAuthentication, requirePermiss
 router.post('/bulk-import', authenticationMiddleware, requireAuthentication, requirePermission(PERMISSIONS.CREATE_USER), usersController.bulkImport);
 router.post('/export-credentials', authenticationMiddleware, requireAuthentication, requirePermission(PERMISSIONS.VIEW_ONLY_USERS), usersController.exportCredentials);
 router.patch("/:id",authenticationMiddleware,requireAuthentication, requirePermission(PERMISSIONS.UPDATE_USER), usersController.update);
-router.get("/:id",authenticationMiddleware,requireAuthentication, requireAnyPermission([PERMISSIONS.VIEW_ONLY_USERS, PERMISSIONS.CREATE_USER, PERMISSIONS.UPDATE_USER, PERMISSIONS.DELETE_USER]), usersController.getById);
-router.get('/', authenticationMiddleware, requireAuthentication, requireAnyPermission([PERMISSIONS.VIEW_ONLY_USERS, PERMISSIONS.CREATE_USER, PERMISSIONS.UPDATE_USER, PERMISSIONS.DELETE_USER]), usersController.getAll);
+router.get("/:id", authenticationMiddleware, requireAuthentication, usersController.getById);
+router.get('/', authenticationMiddleware, requireAuthentication, usersController.getAll);
 
 export default router;

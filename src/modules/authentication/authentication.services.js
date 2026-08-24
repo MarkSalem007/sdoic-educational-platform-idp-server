@@ -28,7 +28,7 @@ import {
     ensureSessionBelongsToUser,
     ensureSessionIsNotCurrent
 } from '../../validators/index.js';
-import { hashToken, verifyRefreshToken, withTransaction, generateJti, generateAccessToken, generateRefreshToken, extractPermissions } from '../../utils/index.js';
+import { hashToken, verifyRefreshToken, withTransaction, generateJti, generateAccessToken, generateRefreshToken, extractPermissions, extractRoles } from '../../utils/index.js';
 import env from '../../config/env.js';
 import { handleLoginFailure, handleLoginSuccess } from './authentication-login.helpers.js';
 import { generateChallenge } from '../../utils/two-factor-challenge.js';
@@ -163,7 +163,10 @@ if (application.status !== 'ACTIVE') {
                 lastName: user.profile.lastName,
                 displayName: user.profile.displayName,
                 avatar: user.profile.avatar,
-                permissions: extractPermissions(user)
+                permissions: extractPermissions(user),
+                roles: extractRoles(user),
+                officeId: user.profile.officeId || null,
+                officeName: user.profile.office?.officeName || null,
             });
 
         const refreshToken =
@@ -266,7 +269,10 @@ export const refresh = async ({ refreshToken }) => {
                 lastName: user.profile.lastName,
                 displayName: user.profile.displayName,
                 avatar: user.profile.avatar,
-                permissions: extractPermissions(user)
+                permissions: extractPermissions(user),
+                roles: extractRoles(user),
+                officeId: user.profile.officeId || null,
+                officeName: user.profile.office?.officeName || null,
             });
 
         // Generate new refresh token
@@ -741,7 +747,10 @@ export const verifyTwoFactor = async ({ data, context }) => {
                 lastName: user.profile.lastName,
                 displayName: user.profile.displayName,
                 avatar: user.profile.avatar,
-                permissions: extractPermissions(user)
+                permissions: extractPermissions(user),
+                roles: extractRoles(user),
+                officeId: user.profile.officeId || null,
+                officeName: user.profile.office?.officeName || null,
             });
 
         const refreshToken =

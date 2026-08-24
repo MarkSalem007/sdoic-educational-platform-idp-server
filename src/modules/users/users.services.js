@@ -20,8 +20,10 @@ export const createUser = async ({ data, context }) => {
         throw new ConflictError('Email address already exists.');
     }
 
-    if (data.mobileNumber) {
-        const existingMobile = await usersRepository.findByMobileNumber({mobileNumber: data.mobileNumber});
+    const trimmedMobile = data.mobileNumber && typeof data.mobileNumber === 'string' && data.mobileNumber.trim() !== '' ? data.mobileNumber.trim() : null;
+
+    if (trimmedMobile) {
+        const existingMobile = await usersRepository.findByMobileNumber({ mobileNumber: trimmedMobile });
         if (existingMobile) {
             throw new ConflictError('Mobile number already exists.');
         }
@@ -50,7 +52,7 @@ export const createUser = async ({ data, context }) => {
                     middleName: data.middleName,
                     lastName: data.lastName,
                     suffix: data.suffix,
-                    mobileNumber: data.mobileNumber
+                    mobileNumber: trimmedMobile
                 }
             });
 
@@ -79,28 +81,30 @@ export const update = async ({ userId, data, context }) => {
         ensureProfileExists(user.profile);
         
         //validate mobile number
-        if (data.mobileNumber) {
-            const existingProfile = await usersRepository.findByMobileNumber({ tx,mobileNumber: data.mobileNumber });
+        const trimmedMobile = data.mobileNumber !== undefined ? (data.mobileNumber && typeof data.mobileNumber === 'string' && data.mobileNumber.trim() !== '' ? data.mobileNumber.trim() : null) : undefined;
+
+        if (trimmedMobile) {
+            const existingProfile = await usersRepository.findByMobileNumber({ tx, mobileNumber: trimmedMobile });
             ensureMobileNumberIsAvailable({ existingProfile, userId });
         }
 
         //validate status transition
-        ensureStatusTransitionIsValid({ currentStatus: user.status,newStatus: data.status });
+        ensureStatusTransitionIsValid({ currentStatus: user.status, newStatus: data.status });
 
         //prepare user update
         const userData = {};
 
-        if (data.status !== undefined) {userData.status = data.status;}
-        if (data.mustChangePassword !== undefined) {userData.mustChangePassword = data.mustChangePassword;}
+        if (data.status !== undefined) { userData.status = data.status; }
+        if (data.mustChangePassword !== undefined) { userData.mustChangePassword = data.mustChangePassword; }
 
         //prepare profile data
         const profileData = {};
 
-        if (data.firstName !== undefined) {profileData.firstName = data.firstName;}
-        if (data.middleName !== undefined) {profileData.middleName = data.middleName;}
-        if (data.lastName !== undefined) {profileData.lastName = data.lastName;}
-        if (data.suffix !== undefined) {profileData.suffix = data.suffix;}
-        if (data.mobileNumber !== undefined) {profileData.mobileNumber = data.mobileNumber;}
+        if (data.firstName !== undefined) { profileData.firstName = data.firstName; }
+        if (data.middleName !== undefined) { profileData.middleName = data.middleName; }
+        if (data.lastName !== undefined) { profileData.lastName = data.lastName; }
+        if (data.suffix !== undefined) { profileData.suffix = data.suffix; }
+        if (trimmedMobile !== undefined) { profileData.mobileNumber = trimmedMobile; }
         if (data.avatar !== undefined) { profileData.avatar = data.avatar; }
 
 

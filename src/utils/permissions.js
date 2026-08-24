@@ -13,3 +13,7 @@ export const extractPermissions = (user) => {
     
     return Array.from(permissionsSet);
 };
+
+export const extractRoles = (user) => {
+    return user.roleAssignments?.map(ra => ra.role.code) || [];
+};

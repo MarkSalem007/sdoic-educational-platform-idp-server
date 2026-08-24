@@ -6,7 +6,9 @@ export const findUserByEmail = async ({ email, tx = prisma }) => {
     return tx.user.findUnique({
         where: { email },
         include: { 
-            profile: true,
+            profile: {
+                include: { office: true }
+            },
             roleAssignments: {
                 include: {
                     role: {

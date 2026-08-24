@@ -77,3 +77,61 @@ export const remove = async ({ id, tx = prisma }) => {
         where: { id }
     });
 };
+
+export const findUserPermissionOverrides = async ({ userId, tx = prisma }) => {
+    return tx.userPermission.findMany({
+        where: { userId },
+        include: { permission: true }
+    });
+};
+
+export const findUserRolePermissions = async ({ userId, tx = prisma }) => {
+    return tx.roleAssignment.findMany({
+        where: { userId },
+        include: {
+            role: {
+                include: {
+                    permissions: {
+                        include: {
+                            permission: true
+                        }
+                    }
+                }
+            }
+        }
+    });
+};
+
+export const setUserPermissionOverride = async ({ userId, permissionId, effect, assignedBy, tx = prisma }) => {
+    return tx.userPermission.upsert({
+        where: {
+            userId_permissionId: {
+                userId,
+                permissionId
+            }
+        },
+        create: {
+            userId,
+            permissionId,
+            effect,
+            assignedBy
+        },
+        update: {
+            effect,
+            assignedBy,
+            assignedAt: new Date()
+        }
+    });
+};
+
+export const removeUserPermissionOverride = async ({ userId, permissionId, tx = prisma }) => {
+    return tx.userPermission.delete({
+        where: {
+            userId_permissionId: {
+                userId,
+                permissionId
+            }
+        }
+    });
+};
+

@@ -34,15 +34,19 @@ export const updateProfile = async ({ tx, authentication, data }) => {
         ensureOfficeExists(office);
     }
 
+    const updateData = { ...data };
+    if (updateData.mobileNumber !== undefined) {
+        updateData.mobileNumber =
+            updateData.mobileNumber && typeof updateData.mobileNumber === 'string' && updateData.mobileNumber.trim() !== ''
+                ? updateData.mobileNumber.trim()
+                : null;
+    }
+
     const updatedProfile =
         await repository.update({
-
             tx,
-
             userId: authentication.user.id,
-
-            data
-
+            data: updateData
         });
 
     return mapProfile(updatedProfile);

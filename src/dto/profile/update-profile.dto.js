@@ -15,7 +15,18 @@ const schema = z.object({
         z.string().trim().optional(),
 
     mobileNumber:
-        z.string().trim().optional(),
+        z.preprocess(
+            (val) => {
+                if (val === undefined) return undefined;
+                if (val === null) return null;
+                if (typeof val === 'string') {
+                    const trimmed = val.trim();
+                    return trimmed === '' ? null : trimmed;
+                }
+                return val;
+            },
+            z.string().regex(/^09\d{9}$/, 'Invalid Philippine mobile number.').nullable().optional()
+        ),
 
     employeeId:
         z.string().trim().optional(),

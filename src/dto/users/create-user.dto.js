@@ -14,7 +14,7 @@ export const createUserSchema = z.object({
     middleName: optionalText(100),
     lastName: requiredText('Last name', 100),
     suffix: optionalText(30),
-    mobileNumber
+    mobileNumber: mobileNumber.optional().nullable()
 }).strict();
 
 export const validateCreateUser = (payload) => {

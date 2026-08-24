@@ -3,14 +3,28 @@ import prisma from '../../config/prisma.js';
 export const findById = async ({ tx = prisma, userId } = {}) => {
     return tx.user.findUnique({
         where: { id: userId },
-        include: { profile: true }
+        include: {
+            profile: {
+                include: {
+                    office: true,
+                    institution: true
+                }
+            }
+        }
     });
 };
 
 export const findByEmail = async ({ tx = prisma, email } = {}) => {
     return tx.user.findUnique({
         where: { email },
-        include: { profile: true }
+        include: {
+            profile: {
+                include: {
+                    office: true,
+                    institution: true
+                }
+            }
+        }
     });
 };
 
@@ -34,7 +48,12 @@ export const updateUser = async ({ tx = prisma, userId, data} = {}) => {
         where: { id: userId },
         data,
         include: {
-            profile: true
+            profile: {
+                include: {
+                    office: true,
+                    institution: true
+                }
+            }
         }
     });
 };
@@ -76,14 +95,18 @@ export const findAll = async ({ tx = prisma, skip, take, search, status, sortBy,
             orderBy = { [sortBy]: sortOrder};
     }
 
-    console.log(JSON.stringify(where, null, 2));
-    console.log(orderBy);
-    
     return tx.user.findMany({
         where,
         skip,
         take,
-        include: { profile: true },
+        include: {
+            profile: {
+                include: {
+                    office: true,
+                    institution: true
+                }
+            }
+        },
         orderBy
     });
 };

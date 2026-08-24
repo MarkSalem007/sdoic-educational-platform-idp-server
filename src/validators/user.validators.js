@@ -10,7 +10,7 @@ export const mobileNumber = z.preprocess(
             const trimmed = value.trim();
             return trimmed === '' ? null : trimmed;
         },
-        z.string().regex( /^09\d{9}$/,'Invalid Philippine mobile number.' ).nullable()
+        z.string().regex( /^09\d{9}$/,'Invalid Philippine mobile number.' ).nullable().optional()
 );
 
 

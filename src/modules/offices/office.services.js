@@ -3,17 +3,30 @@ import { mapOffice, mapOffices } from "./office.mapper.js";
 import { ensureOfficeCodeAvailable, ensureOfficeExists } from "../../validators/office.validators.js";
 
 export const createOffice = async ({ tx, data }) => {
+    const sanitizedData = { ...data };
+    if (sanitizedData.officeCode) {
+        sanitizedData.officeCode = sanitizedData.officeCode.trim();
+        if (sanitizedData.officeCode === '') {
+            sanitizedData.officeCode = null;
+        }
+    }
+    if (sanitizedData.officeEmail) {
+        sanitizedData.officeEmail = sanitizedData.officeEmail.trim();
+        if (sanitizedData.officeEmail === '') {
+            sanitizedData.officeEmail = null;
+        }
+    }
 
-    if (data.officeCode) {
+    if (sanitizedData.officeCode) {
         const existingOffice = await repository.findByOfficeCode({
             tx,
-            officeCode: data.officeCode
+            officeCode: sanitizedData.officeCode
         });
 
         ensureOfficeCodeAvailable(existingOffice);
     }
 
-    const office = await repository.create({ tx, data });
+    const office = await repository.create({ tx, data: sanitizedData });
 
     return mapOffice(office);
 };
@@ -82,10 +95,18 @@ export const updateOffice = async ({ tx, officeId, data }) => {
 
     ensureOfficeExists(office);
 
-    if (data.officeCode && data.officeCode !== office.officeCode) {
+    const sanitizedData = { ...data };
+    if (sanitizedData.officeCode !== undefined) {
+        sanitizedData.officeCode = sanitizedData.officeCode && sanitizedData.officeCode.trim() !== '' ? sanitizedData.officeCode.trim() : null;
+    }
+    if (sanitizedData.officeEmail !== undefined) {
+        sanitizedData.officeEmail = sanitizedData.officeEmail && sanitizedData.officeEmail.trim() !== '' ? sanitizedData.officeEmail.trim() : null;
+    }
+
+    if (sanitizedData.officeCode && sanitizedData.officeCode !== office.officeCode) {
         const existingOffice = await repository.findByOfficeCode({
             tx,
-            officeCode: data.officeCode
+            officeCode: sanitizedData.officeCode
         });
 
         ensureOfficeCodeAvailable(existingOffice);
@@ -94,7 +115,7 @@ export const updateOffice = async ({ tx, officeId, data }) => {
     const updatedOffice = await repository.update({
         tx,
         officeId,
-        data
+        data: sanitizedData
     });
 
     return mapOffice(updatedOffice);
