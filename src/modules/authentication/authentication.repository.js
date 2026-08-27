@@ -7,7 +7,7 @@ export const findUserByEmail = async ({ email, tx = prisma }) => {
         where: { email },
         include: { 
             profile: {
-                include: { office: true }
+                include: { office: true, institution: true }
             },
             roleAssignments: {
                 include: {
@@ -145,7 +145,9 @@ export const findUserById = async ({
             id: userId
         },
         include: {
-            profile: true
+            profile: {
+                include: { office: true, institution: true }
+            }
         }
     });
 
@@ -165,7 +167,9 @@ export const findSessionWithUser = async ({
         include: {
             user: {
                 include: {
-                    profile: true,
+                    profile: {
+                        include: { office: true, institution: true }
+                    },
                     userTwoFactor: true,
                     roleAssignments: {
                         include: {
@@ -199,7 +203,9 @@ export const findRefreshTokenWithSession = async ({
                 include: {
                     user: {
                         include: {
-                            profile: true,
+                            profile: {
+                                include: { office: true, institution: true }
+                            },
                             roleAssignments: {
                                 include: {
                                     role: {
@@ -245,7 +251,7 @@ export const createPasswordResetToken = ({ tx = prisma, data }) => {
 export const findPasswordResetToken = async ({ tx = prisma, tokenHash }) => {
     return tx.passwordResetToken.findUnique({
         where: { tokenHash },
-        include: { user: { include: { profile: true } } }
+        include: { user: { include: { profile: { include: { office: true, institution: true } } } } }
     });
 };
 

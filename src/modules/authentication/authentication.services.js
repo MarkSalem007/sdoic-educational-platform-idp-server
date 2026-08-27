@@ -167,6 +167,8 @@ if (application.status !== 'ACTIVE') {
                 roles: extractRoles(user),
                 officeId: user.profile.officeId || null,
                 officeName: user.profile.office?.officeName || null,
+                schoolId: user.profile.institutionId || null,
+                schoolName: user.profile.institution?.name || null,
             });
 
         const refreshToken =
@@ -273,6 +275,8 @@ export const refresh = async ({ refreshToken }) => {
                 roles: extractRoles(user),
                 officeId: user.profile.officeId || null,
                 officeName: user.profile.office?.officeName || null,
+                schoolId: user.profile.institutionId || null,
+                schoolName: user.profile.institution?.name || null,
             });
 
         // Generate new refresh token
