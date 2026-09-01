@@ -1,4 +1,4 @@
-import { NotFoundError, ConflictError } from '../errors/index.js';
+import { NotFoundError, ConflictError, ValidationError } from '../errors/index.js';
 
 export const ensureOfficeExists = (office) => {
     if (!office) {
@@ -17,3 +17,22 @@ export const ensureOfficeCodeAvailable = (office) => {
         );
     }
 };
+
+export const ensureLogoExists = (file) => {
+    if (!file) {
+        throw new ValidationError(
+            'LOGO_REQUIRED',
+            'Logo image is required.'
+        );
+    }
+};
+
+export const ensureLogoExtensionAllowed = (extension) => {
+    const allowed = ['.jpg', '.jpeg', '.png', '.webp', '.svg'];
+    if (!allowed.includes(extension)) {
+        throw new ValidationError(
+            'INVALID_LOGO',
+            'Only JPG, JPEG, PNG, WEBP, and SVG images are allowed.'
+        );
+    }
+};

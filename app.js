@@ -16,6 +16,7 @@ app.use(corsMiddleware);
 app.use('/uploads/profile', express.static(env.STORAGE_LOCATION));
 app.use('/uploads/applications', express.static(env.APPLICATION_LOGO_STORAGE));
 app.use('/uploads/institution-logos', express.static(env.INSTITUTION_LOGO_STORAGE));
+app.use('/uploads/school-logos', express.static(env.SCHOOL_LOGO_STORAGE));
 
 app.use(express.json());
 

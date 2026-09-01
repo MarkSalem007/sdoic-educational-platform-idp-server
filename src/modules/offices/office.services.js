@@ -1,6 +1,14 @@
+import fs from 'fs/promises';
+import path from 'path';
 import * as repository from "./office.repository.js";
 import { mapOffice, mapOffices } from "./office.mapper.js";
-import { ensureOfficeCodeAvailable, ensureOfficeExists } from "../../validators/office.validators.js";
+import {
+    ensureOfficeCodeAvailable,
+    ensureOfficeExists,
+    ensureLogoExists,
+    ensureLogoExtensionAllowed
+} from "../../validators/office.validators.js";
+import env from "../../config/env.js";
 
 export const createOffice = async ({ tx, data }) => {
     const sanitizedData = { ...data };
@@ -108,11 +116,54 @@ export const updateOffice = async ({ tx, officeId, data }) => {
     return mapOffice(updatedOffice);
 };
 
+export const uploadLogo = async ({ tx, officeId, file }) => {
+
+    const office = await repository.findById({ tx, officeId });
+    ensureOfficeExists(office);
+
+    ensureLogoExists(file);
+
+    const extension = path.extname(file.originalname).toLowerCase();
+    ensureLogoExtensionAllowed(extension);
+
+    const storageLocation = env.SCHOOL_LOGO_STORAGE || env.STORAGE_LOCATION;
+    await fs.mkdir(storageLocation, { recursive: true });
+
+    // Delete old logo file if it exists
+    if (office.schoolLogo) {
+        const oldFile = path.join(storageLocation, office.schoolLogo);
+        try {
+            await fs.unlink(oldFile);
+        } catch {
+            // Ignore if file doesn't exist
+        }
+    }
+
+    const filename = `${officeId}${extension}`;
+    const destination = path.join(storageLocation, filename);
+
+    await fs.writeFile(destination, file.buffer);
+
+    const updated = await repository.updateLogo({ tx, officeId, schoolLogo: filename });
+
+    return mapOffice(updated);
+};
+
 export const deleteOffice = async ({ tx, officeId }) => {
 
     const office = await repository.findById({ tx, officeId });
 
     ensureOfficeExists(office);
+
+    if (office.schoolLogo) {
+        const storageLocation = env.SCHOOL_LOGO_STORAGE || env.STORAGE_LOCATION;
+        const logoFile = path.join(storageLocation, office.schoolLogo);
+        try {
+            await fs.unlink(logoFile);
+        } catch {
+            // Ignore if file doesn't exist
+        }
+    }
 
     await repository.remove({ tx, officeId });
 };

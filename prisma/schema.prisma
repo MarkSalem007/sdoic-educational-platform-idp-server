@@ -365,6 +365,7 @@ model office {
   officeName    String        @db.Text
   officeType    officeTypes   @default(SCHOOL)
   schoolLevel   schoolLevel?
+  schoolLogo    String?
   officeHead    String?       @db.Text
   officeCode    String?       @unique
   officeAddress String?       @db.Text

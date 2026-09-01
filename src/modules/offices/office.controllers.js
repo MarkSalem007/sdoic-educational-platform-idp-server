@@ -87,6 +87,23 @@ export const updateOffice = asyncHandler(async (req, res) => {
     );
 });
 
+export const uploadLogo = asyncHandler(async (req, res) => {
+
+    const office = await officeService.uploadLogo({
+        officeId: req.params.officeId,
+        file: req.file
+    });
+
+    return res.status(200).json(
+        successResponse({
+            message: 'School logo uploaded successfully.',
+            data: office,
+            requestId: req.requestId,
+            timestamp: toISOString()
+        })
+    );
+});
+
 export const deleteOffice = asyncHandler(async (req, res) => {
 
     await officeService.deleteOffice({

@@ -3,6 +3,7 @@ export const mapOffice = (office) => ({
     officeName: office.officeName,
     officeType: office.officeType,
     schoolLevel: office.schoolLevel ?? null,
+    schoolLogo: office.schoolLogo ?? null,
     officeCode: office.officeCode,
     officeHead: office.officeHead,
     officeAddress: office.officeAddress,

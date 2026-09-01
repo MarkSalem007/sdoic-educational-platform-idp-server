@@ -21,6 +21,12 @@ const updateOfficeSchema = z.object({
         .optional()
         .nullable(),
 
+    schoolLogo: z
+        .string()
+        .trim()
+        .optional()
+        .nullable(),
+
     officeCode: z
         .string()
         .trim()

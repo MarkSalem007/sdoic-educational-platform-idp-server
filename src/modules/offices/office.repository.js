@@ -45,6 +45,17 @@ export const update = async ({ tx = prisma, officeId, data }) => {
     });
 };
 
+export const updateLogo = async ({ tx = prisma, officeId, schoolLogo }) => {
+    return tx.office.update({ 
+        where: {
+            id: officeId
+        },
+        data: {
+            schoolLogo
+        }
+    });
+};
+
 export const remove = async ({ tx = prisma, officeId }) => {
     return tx.office.delete({
         where: {
