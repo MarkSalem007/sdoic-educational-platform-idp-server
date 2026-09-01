@@ -63,3 +63,25 @@ export const requireAnyPermission = (permissionCodes) => {
         throw new AuthorizationError('AUTH_FORBIDDEN', 'Access denied. You do not have permission to perform this action.');
     };
 };
+
+export const requireSystemAdmin = (req, res, next) => {
+    const user = req.user;
+    
+    if (!user) {
+        throw new AuthorizationError('AUTH_FORBIDDEN', 'Access denied. No user found.');
+    }
+
+    const isSysAdmin = user.roleAssignments?.some(ra => 
+        ra.role?.code === 'SYS_ADMIN' || 
+        ra.role?.code === 'SYSTEM_ADMIN' || 
+        ra.role?.name === 'System Administrator'
+    );
+
+    const permissions = extractPermissions(user);
+
+    if (isSysAdmin || permissions.includes('ALL_PERMISSIONS')) {
+        return next();
+    }
+
+    throw new AuthorizationError('AUTH_FORBIDDEN', 'Access denied. Only System Administrators can perform this action.');
+};
