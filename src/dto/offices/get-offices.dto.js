@@ -11,12 +11,12 @@ const getOfficesSchema = z.object({
         .min(1)
         .default(1),
 
+    // 0 = no limit (fetch all). Positive integers = paginated.
     limit: z
         .coerce
         .number()
         .int()
-        .min(1)
-        .max(100)
+        .min(0)
         .default(10),
 
     search: z

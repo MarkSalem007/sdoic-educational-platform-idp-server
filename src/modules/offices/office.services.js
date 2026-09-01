@@ -41,8 +41,6 @@ export const getOffice = async ({ officeId }) => {
 
 export const getOffices = async ({ page = 1, limit = 10, search, officeType, schoolLevel }) => {
 
-    const skip = (page - 1) * limit;
-
     const where = {};
 
     if (officeType) {
@@ -55,41 +53,26 @@ export const getOffices = async ({ page = 1, limit = 10, search, officeType, sch
 
     if (search) {
         where.OR = [
-            {
-                officeName: {
-                    contains: search
-                }
-            },
-            {
-                officeCode: {
-                    contains: search
-                }
-            }
+            { officeName: { contains: search } },
+            { officeCode: { contains: search } }
         ];
     }
 
-    const [offices, total] =
-        await Promise.all([
-            repository.findMany({
-                where,
-                skip,
-                take: limit
-            }),
+    const fetchAll = limit === 0;
 
-            repository.count({
-                where
-            })
-        ]);
+    const [offices, total] = await Promise.all([
+        repository.findMany({
+            where,
+            ...(fetchAll ? {} : { skip: (page - 1) * limit, take: limit })
+        }),
+        repository.count({ where })
+    ]);
 
     return {
         offices: mapOffices(offices),
-        pagination: {
-            page,
-            limit,
-            total,
-            totalPages:
-                Math.ceil(total / limit)
-        }
+        pagination: fetchAll
+            ? { page: 1, limit: total, total, totalPages: 1 }
+            : { page, limit, total, totalPages: Math.ceil(total / limit) }
     };
 };
 
