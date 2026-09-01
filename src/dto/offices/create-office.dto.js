@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+const SCHOOL_LEVELS = ['ELEMENTARY', 'JUNIOR_HIGH_SCHOOL', 'SENIOR_HIGH_SCHOOL', 'INTEGRATED_SCHOOL'];
+
 const createOfficeSchema = z.object({
 
     officeName: z
@@ -12,6 +14,11 @@ const createOfficeSchema = z.object({
         'SCHOOL',
         'DIVISION_OFFICE'
     ]),
+
+    schoolLevel: z
+        .enum(SCHOOL_LEVELS)
+        .optional()
+        .nullable(),
 
     officeCode: z
         .string()
@@ -48,4 +55,4 @@ const createOfficeSchema = z.object({
 });
 
 export const validateCreateOffice = (data) =>
-    createOfficeSchema.parse(data);
+    createOfficeSchema.parse(data);

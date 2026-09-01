@@ -2,6 +2,7 @@ export const mapOffice = (office) => ({
     id: office.id,
     officeName: office.officeName,
     officeType: office.officeType,
+    schoolLevel: office.schoolLevel ?? null,
     officeCode: office.officeCode,
     officeHead: office.officeHead,
     officeAddress: office.officeAddress,
@@ -10,6 +11,7 @@ export const mapOffice = (office) => ({
     createdAt: office.createdAt,
     updatedAt: office.updatedAt
 });
+
 
 export const mapOffices = (offices) =>
     offices.map(mapOffice);

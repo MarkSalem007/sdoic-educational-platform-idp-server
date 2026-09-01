@@ -40,6 +40,13 @@ enum officeTypes {
   DIVISION_OFFICE
 }
 
+enum schoolLevel {
+  ELEMENTARY
+  JUNIOR_HIGH_SCHOOL
+  SENIOR_HIGH_SCHOOL
+  INTEGRATED_SCHOOL
+}
+
 enum plantillaStatus {
   PERMANENT
   CONTRACTUAL
@@ -357,6 +364,7 @@ model office {
   id            String        @id @unique @default(uuid())
   officeName    String        @db.Text
   officeType    officeTypes   @default(SCHOOL)
+  schoolLevel   schoolLevel?
   officeHead    String?       @db.Text
   officeCode    String?       @unique
   officeAddress String?       @db.Text

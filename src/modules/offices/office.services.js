@@ -39,7 +39,7 @@ export const getOffice = async ({ officeId }) => {
     return mapOffice(office);
 };
 
-export const getOffices = async ({ page = 1, limit = 10, search, officeType }) => {
+export const getOffices = async ({ page = 1, limit = 10, search, officeType, schoolLevel }) => {
 
     const skip = (page - 1) * limit;
 
@@ -47,6 +47,10 @@ export const getOffices = async ({ page = 1, limit = 10, search, officeType }) =
 
     if (officeType) {
         where.officeType = officeType;
+    }
+
+    if (schoolLevel) {
+        where.schoolLevel = schoolLevel;
     }
 
     if (search) {

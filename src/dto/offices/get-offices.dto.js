@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+const SCHOOL_LEVELS = ['ELEMENTARY', 'JUNIOR_HIGH_SCHOOL', 'SENIOR_HIGH_SCHOOL', 'INTEGRATED_SCHOOL'];
+
 const getOfficesSchema = z.object({
 
     page: z
@@ -25,8 +27,12 @@ const getOfficesSchema = z.object({
     officeType: z.enum([
         'SCHOOL',
         'DIVISION_OFFICE'
-    ]).optional()
+    ]).optional(),
+
+    schoolLevel: z
+        .enum(SCHOOL_LEVELS)
+        .optional()
 });
 
 export const validateGetOffices = (query) =>
-    getOfficesSchema.parse(query);
+    getOfficesSchema.parse(query);

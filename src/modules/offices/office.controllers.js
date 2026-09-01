@@ -29,14 +29,16 @@ export const getOffices = asyncHandler(async (req, res) => {
         page,
         limit,
         search,
-        officeType
+        officeType,
+        schoolLevel
     } = validateGetOffices(req.query);
 
     const result = await officeService.getOffices({
         page,
         limit,
         search,
-        officeType
+        officeType,
+        schoolLevel
     });
 
     return res.status(200).json(
